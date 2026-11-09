@@ -2,6 +2,8 @@
 
 QRコードから開くオンラインストアです。
 
+**公開 URL：https://salon-ito-shop.netlify.app/**（GitHub の main に保存すると、GitHub Actions が Netlify のプロジェクト `salon-ito-shop` に自動で公開します。設定は `.github/workflows/deploy-netlify.yml`）
+
 - 決済：Stripe Checkout（カード / Apple Pay / Google Pay / PayPay / コンビニ払い）
 - 注文の記録：Googleスプレッドシート（決済が完了した注文だけを記録）
 - 購入完了メール：お客様とサロンの両方に送信
