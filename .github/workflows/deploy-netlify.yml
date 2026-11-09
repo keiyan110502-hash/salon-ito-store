@@ -1,0 +1,47 @@
+# GitHub に保存（main へ push）するたびに、Netlify の既存プロジェクトへ公開する。
+# Netlify と GitHub を直接つながなくても公開できる方法（GitHub Actions は非公開リポジトリでも月2,000分まで無料）。
+# 必要な設定（GitHub のリポジトリ → Settings → Secrets and variables → Actions → New repository secret）
+#   NETLIFY_AUTH_TOKEN : Netlify の個人アクセストークン（User settings → Applications → Personal access tokens）
+#   NETLIFY_SITE_ID    : 公開先プロジェクトの Project ID（Project configuration → General → Project details）
+# 2つがそろうまでは、何もせずに終了します。
+name: Deploy to Netlify
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:        # 手動で「Run workflow」からも公開できる
+  repository_dispatch:      # 管理スプレッドシートの「サイトに反映する」用（将来）
+    types: [publish]
+
+concurrency:
+  group: netlify-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: 設定がそろっているか確認
+        id: check
+        env:
+          TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          SITE: ${{ secrets.NETLIFY_SITE_ID }}
+        run: |
+          if [ -n "$TOKEN" ] && [ -n "$SITE" ]; then echo "ready=true" >> "$GITHUB_OUTPUT"; else echo "::notice::NETLIFY_AUTH_TOKEN / NETLIFY_SITE_ID が未設定のため、公開をスキップしました"; fi
+      - uses: actions/checkout@v4
+        if: steps.check.outputs.ready == 'true'
+      - uses: actions/setup-node@v4
+        if: steps.check.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+      - name: 依存パッケージのインストール
+        if: steps.check.outputs.ready == 'true'
+        run: npm ci
+      - name: ビルドして Netlify に公開
+        if: steps.check.outputs.ready == 'true'
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        run: npx --yes netlify-cli@27 deploy --build --prod --message "GitHub ${GITHUB_SHA::7}"
