@@ -25,7 +25,7 @@ data/products.csv       … 商品の初期データ（運用時は管理スプ�
 data/news.csv           … お知らせの初期データ
 scripts/                … シートの取り込み、CSV→JSON 変換、デザイン確認用プレビューの作成
 docs/launch-guide.md    … 決済の申請、法対応、公開前チェックリスト
-（妹尾さん向けの運用マニュアルは Claude Docs の「salon ito オンラインストア 運用マニュアル」、PDF 版は docs/salon-ito-運用マニュアル.pdf）
+（妹尾さん向けの運用マニュアルは Claude Docs の「salon ito オンラインストア 運用マニュアル」、PDF 版は docs/salon-ito-manual.pdf）
 ```
 
 ## 商品データの更新（運用時）
