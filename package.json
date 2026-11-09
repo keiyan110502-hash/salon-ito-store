@@ -1,0 +1,14 @@
+{
+  "name": "salon-ito-store",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "products": "node scripts/csv-to-json.mjs",
+    "preview": "node scripts/build-preview.mjs",
+    "dev": "netlify dev"
+  },
+  "dependencies": {
+    "stripe": "^23.1.0"
+  },
+  "engines": { "node": ">=20" }
+}
