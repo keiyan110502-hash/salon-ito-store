@@ -49,6 +49,7 @@ export function toOrder(session) {
     shipping: session.total_details?.amount_shipping || 0,
     total: session.amount_total,
     fulfillment: session.metadata?.fulfillment === "pickup" ? "pickup" : "ship",
+    note: (session.custom_fields || []).find(f => f.key === "note")?.text?.value || "",
     paymentType: type,
     paymentMethod: PM_LABEL[type] || type,
     status: session.payment_status === "paid" ? "paid" : "unpaid",

@@ -26,12 +26,12 @@ const SHEET = { products: '商品', news: 'お知らせ', orders: '注文一覧'
 // 決済手数料率（入金見込みの計算用）。Stripe の料金ページ・契約内容で確認して更新してください。
 const FEE_RATES = { card: 0.036, apple_pay: 0.036, google_pay: 0.036, paypay: 0.036, konbini: 0.036 };
 
-const PRODUCT_HEADERS = ['商品ID', 'ブランド', 'シリーズ', 'カテゴリ', '商品名', '容量', '価格(税込)', '公開', '仮データ', '画像', 'ラベル',
-  '医薬部外品', '売り切れ', '商品説明', '使い方', '全成分', '公式URL'];
-const PRODUCT_CHECKBOX_COLS = [8, 9, 12, 13]; // 公開・仮データ・医薬部外品・売り切れ
+const PRODUCT_HEADERS = ['商品ID', 'グループID', 'ブランド', 'シリーズ', 'カテゴリ', '商品名', '商品名（カナ）', '容量', '価格(税込)', '公開', '仮データ',
+  '画像', 'ラベル', 'おすすめの肌悩み', '医薬部外品', '売り切れ', 'キャッチコピー', '商品説明', '使い方', '全成分', '公式URL', '画像の元URL'];
+const PRODUCT_CHECKBOX_COLS = [10, 11, 15, 16]; // 公開・仮データ・医薬部外品・売り切れ
 const NEWS_HEADERS = ['日付', '本文', '公開'];
 const ORDER_HEADERS = ['注文日時', '注文番号', '購入者', 'メール', '電話', '郵便番号', '住所', '商品ID', '商品名', '単価', '数量', '小計',
-  '送料', '注文合計', '支払方法', '決済手数料(見込)', '入金見込み', 'ステータス', 'Stripe Session ID', '発送日・準備完了日', '配送会社・追跡番号', '受取方法'];
+  '送料', '注文合計', '支払方法', '決済手数料(見込)', '入金見込み', 'ステータス', 'Stripe Session ID', '発送日・準備完了日', '配送会社・追跡番号', '受取方法', 'ご要望'];
 const COL = { orderNo: 2, name: 3, email: 4, status: 18, shippedAt: 20, tracking: 21, fulfillment: 22 };
 const PICKUP_LABEL = 'サロンで受け取り';
 
@@ -60,9 +60,9 @@ function setup() {
   const products = ensure(SHEET.products, PRODUCT_HEADERS, 0);
   const rule = SpreadsheetApp.newDataValidation().requireCheckbox().build();
   PRODUCT_CHECKBOX_COLS.forEach(c => products.getRange(2, c, 999, 1).setDataValidation(rule));
-  products.getRange('G:G').setNumberFormat('#,##0');
-  products.getRange('N:P').setWrap(true);
-  products.setColumnWidth(5, 240); products.setColumnWidth(14, 320);
+  products.getRange('I:I').setNumberFormat('#,##0');
+  products.getRange('Q:T').setWrap(true);
+  products.setColumnWidth(6, 240); products.setColumnWidth(18, 320);
 
   const news = ensure(SHEET.news, NEWS_HEADERS, 1);
   news.getRange(2, 3, 999, 1).setDataValidation(rule);
@@ -91,7 +91,7 @@ function checkProducts_() {
   const errors = [], ids = {};
   for (let r = 1; r < values.length; r++) {
     const row = values[r], line = r + 1;
-    const [id, , , , name, , price, visible] = row;
+    const [id, , , , , name, , , price, visible] = row;
     if (!id && !name) continue;
     if (visible === false) continue;
     if (!/^[a-z0-9-]+$/.test(String(id))) errors.push(`${line}行目：商品ID は半角英小文字・数字・ハイフンのみ（「${id}」）`);
@@ -141,7 +141,7 @@ function doPost(e) {
       it.id, it.name, it.price, it.qty, it.price * it.qty,
       i === 0 ? o.shipping : '', i === 0 ? o.total : '', o.paymentMethod,
       i === 0 ? fee : '', i === 0 ? o.total - fee : '', '決済完了', o.sessionId, '', '',
-      o.fulfillment === 'pickup' ? PICKUP_LABEL : '郵送',
+      o.fulfillment === 'pickup' ? PICKUP_LABEL : '郵送', o.note || '',
     ]);
     sh.getRange(sh.getLastRow() + 1, 1, rows.length, ORDER_HEADERS.length).setValues(rows);
     SpreadsheetApp.flush();
@@ -180,7 +180,7 @@ function sendOrderMails_(o, salonEmail) {
     MailApp.sendEmail({
       to: salonEmail, name: `${SHOP_NAME} 注文通知`,
       subject: `【新規注文】${c.name} 様　${yen_(o.total)}（${o.orderNo}）`,
-      body: `新しいご注文が入りました（決済完了）。\n\n注文番号：${o.orderNo}\n日時：${d}\nお客様：${c.name}（${c.email}）\n電話：${c.phone || '-'}\n受け取り：${pickup ? '【サロンで受け取り】' : `郵送　〒${c.postal} ${c.address}`}\n支払い：${o.paymentMethod}\n\n${lines}\n\n${money}\n\n${pickup ? '商品を用意したら' : '発送したら'}、スプレッドシートでこの注文の行を選び、メニュー「salon ito > 選択中の注文を「発送済み／ご用意完了」にしてメールを送る」を押してください。\n${SpreadsheetApp.getActive().getUrl()}`,
+      body: `新しいご注文が入りました（決済完了）。\n\n注文番号：${o.orderNo}\n日時：${d}\nお客様：${c.name}（${c.email}）\n電話：${c.phone || '-'}\n受け取り：${pickup ? '【サロンで受け取り】' : `郵送　〒${c.postal} ${c.address}`}\n支払い：${o.paymentMethod}${o.note ? `\nご要望：${o.note}` : ''}\n\n${lines}\n\n${money}\n\n${pickup ? '商品を用意したら' : '発送したら'}、スプレッドシートでこの注文の行を選び、メニュー「salon ito > 選択中の注文を「発送済み／ご用意完了」にしてメールを送る」を押してください。\n${SpreadsheetApp.getActive().getUrl()}`,
     });
   }
 }

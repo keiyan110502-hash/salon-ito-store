@@ -23,7 +23,8 @@ export function parseCSV(text) {
 }
 
 const KEYS = {
-  "商品ID": "id", "ブランド": "brand", "シリーズ": "line", "カテゴリ": "category", "商品名": "name", "容量": "volume",
+  "商品ID": "id", "グループID": "group", "商品名（カナ）": "name_kana", "おすすめの肌悩み": "concerns", "キャッチコピー": "catch",
+  "画像の元URL": "image_source", "ブランド": "brand", "シリーズ": "line", "カテゴリ": "category", "商品名": "name", "容量": "volume",
   "価格(税込)": "price", "価格（税込）": "price", "価格": "price", "公開": "visible", "仮データ": "draft", "画像": "image",
   "ラベル": "tag", "医薬部外品": "quasi_drug", "売り切れ": "soldout", "商品説明": "description", "使い方": "how_to_use",
   "全成分": "ingredients", "公式URL": "official_url", "日付": "date", "本文": "text",
@@ -50,7 +51,9 @@ export function convert({ productsCsv = "data/products.csv", newsCsv = "data/new
     if (!Number.isInteger(price) || price <= 0) errors.push(`${line}行目: 価格(税込) は数字で入力してください（「${o.price}」）`);
     if (!o.name) errors.push(`${line}行目: 商品名 が空です`);
     products.push({
-      id: o.id, brand: o.brand, line: o.line, category: o.category, name: o.name, volume: o.volume, price,
+      id: o.id, group: o.group || o.id, nameKana: o.name_kana || "", catch: o.catch || "",
+      concerns: (o.concerns || "").split(/[、,／\/]/).map(x => x.trim()).filter(Boolean),
+      brand: o.brand, line: o.line, category: o.category, name: o.name, volume: o.volume, price,
       draft: truthy(o.draft), image: o.image, tag: o.tag, quasiDrug: truthy(o.quasi_drug), soldout: truthy(o.soldout),
       description: o.description, howTo: o.how_to_use, ingredients: o.ingredients, officialUrl: o.official_url,
     });

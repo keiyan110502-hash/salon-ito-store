@@ -102,3 +102,13 @@ npm run preview
 ## 運用マニュアル（PDF）の作り直し
 
 `docs/manual/manual.html` を編集し、Playwright で A4 の PDF に書き出します（ガントチャートとフロー図は横向きのページ）。
+
+## 公式サイトからの商品取り込み（初回登録用）
+
+`scripts/import/` に、アジュバン・バイオラブの公式サイトから商品データを作るスクリプトがあります。
+
+- `parse_biolab.py`：www.biolab.jp/products/<id>/ の HTML → JSON
+- `parse_adjuvant.py`：www.adjuvant.co.jp/brandlist/<brand>/ の HTML → JSON（業務用・価格なしは除外）
+- `build_catalog.py`：2つの JSON → `data/products.csv`（1サイズ1行。サイズ違いは「グループID」でまとめる）
+
+取り込んだ元データは `data/source/`、商品写真（正方形 720px）は `public/images/products/<グループID>.jpg` にあります。運用開始後は、管理スプレッドシートの「商品」シートが正です。

@@ -57,6 +57,8 @@ export default async (req) => {
       }],
       metadata: { fulfillment: pickup ? "pickup" : "ship" },
       payment_method_options: { konbini: { expires_after_days: 3 } },
+      // 色のご指定などを書いてもらう欄（任意）
+      custom_fields: [{ key: "note", label: { type: "custom", custom: "ご要望（色のご指定など）" }, type: "text", optional: true, text: { maximum_length: 200 } }],
       success_url: `${origin}/?session_id={CHECKOUT_SESSION_ID}#done`,
       cancel_url: `${origin}/#cart`,
     });

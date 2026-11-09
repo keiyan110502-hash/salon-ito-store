@@ -19,12 +19,32 @@
     return;
   }
 
-  const GROUPS = {
-    "スキンケア": ["クレンジング", "洗顔", "化粧水", "美容液", "乳液", "クリーム", "UV・下地", "パック", "スキンケア"],
-    "ボディ": ["ボディ"],
-    "ヘアケア": ["シャンプー", "トリートメント", "ヘアケア", "スタイリング"],
-  };
-  const groupOf = c => Object.keys(GROUPS).find(g => GROUPS[g].includes(c)) || "その他";
+  // カテゴリ名から大分類を決める（上から順に判定）
+  const CATS = [
+    ["ヘアケア", /シャンプー|トリートメント|頭皮|整髪|ヘア|カートリッジ/],
+    ["メイク", /ファンデ|下地|メイクアップ|おしろい|パウダー|アイ|リップ|チーク|口紅|マスカラ|フェイスカラ|ブラシ/],
+    ["ボディ", /ボディ|全身|ハンド|精油|エッセンシャル|歯みがき|マッサージ/],
+    ["スキンケア", /洗顔|化粧水|化粧液|保湿液|美容液|乳液|クリーム|マスク|パック|クレンジング|メイク落とし|日やけ止め|美白|男性用|美顔器|キット/],
+  ];
+  const groupOf = c => (CATS.find(([, re]) => re.test(c || "")) || ["その他"])[0];
+  // サイズ違い（同じグループID）をまとめた商品の一覧。並びは商品データの順
+  const GROUPED = [];
+  { const byId = {};
+    for (const p of PRODUCTS) {
+      const g = p.group || p.id;
+      if (!byId[g]) GROUPED.push(byId[g] = { id: g, items: [] });
+      byId[g].items.push(p);
+    }
+    for (const g of GROUPED) {
+      // 最初に選ばれるサイズは通常品（ミニ・詰替・レフィル・付属品以外）
+      const avail = g.items.filter(x => !x.soldout);
+      g.main = avail.find(x => !/ミニ|詰替|付替|レフィル|ケース|パフ|単品|別売|ブラシ/.test(x.volume)) || avail[0] || g.items[0];
+      g.soldout = g.items.every(x => x.soldout);
+      g.min = Math.min(...g.items.filter(x => !x.soldout).map(x => x.price).concat(g.soldout ? [g.main.price] : []));
+      g.cat = groupOf(g.main.category);
+    }
+  }
+  const G = id => GROUPED.find(g => g.id === id);
   const PAYMENTS = [
     { key: "card", label: "クレジットカード", sub: "Visa / Mastercard / JCB / American Express / Diners Club" },
     { key: "wallet", label: "Apple Pay / Google Pay", sub: "対応端末でワンタップ決済" },
@@ -42,7 +62,7 @@
   let cart = load("ito-cart", []).filter(i => P(i.id) && !P(i.id).soldout);
   let history = load("ito-orders", []);
   let demoOrders = DEMO ? load("ito-demo-orders", null) : null;
-  let filter = "すべて", detailQty = 1, mpTab = "orders", lastOrder = null;
+  let filter = "すべて", brandFilter = "すべて", query = "", detailQty = 1, mpTab = "orders", lastOrder = null;
   let fulfillment = load("ito-fulfillment", "ship"); // "ship"（郵送） | "pickup"（サロンで受け取り）
   const PICKUP = !!SHOP.pickup?.enabled;
   if (!PICKUP) fulfillment = "ship";
@@ -59,7 +79,7 @@
 
   /* ---------- placeholder art (used until real photos are added) ---------- */
   function art(p) {
-    if (p.image) return `<img src="${esc(p.image)}" alt="${esc(p.name)}" loading="lazy" width="800" height="800">`;
+    if (p.image) return `<img src="${esc((window.__ITO_IMG__ || {})[p.image] || p.image)}" alt="${esc(p.name)}" loading="lazy" width="720" height="720">`;
     const cap = "#3A3633", body = "#FFFFFF", edge = "#E2DED9";
     const c = p.category;
     const shape =
@@ -102,20 +122,36 @@
   const curl = `<svg class="curl" viewBox="0 0 40 14" aria-hidden="true"><path d="M0 9 C8 9 12 3 20 4 C26 5 26 12 21 11 C16 10 19 3 26 4 C32 5 35 8 40 8"/></svg>`;
 
   /* ---------- views ---------- */
-  function card(p) {
-    return `<a class="card" href="#item-${p.id}">
-      <div class="sq">${art(p)}${p.tag && !p.soldout ? `<span class="flag">${esc(p.tag)}</span>` : ""}</div>
+  function card(g) {
+    const p = g.main, many = g.items.filter(x => !x.soldout).length > 1;
+    const flag = g.soldout ? "" : p.tag ? p.tag : "";
+    return `<a class="card" href="#item-${g.id}">
+      <div class="sq">${art(p)}${flag ? `<span class="flag">${esc(flag)}</span>` : ""}</div>
       <div class="card-meta">
-        <span class="brand">${esc(p.brand)}</span>
-        <span class="name">${esc(p.name)}${p.volume ? `　${esc(p.volume)}` : ""}</span>
-        ${p.soldout ? `<span class="soldout">SOLD OUT</span>` : `<span class="price">${yen(p.price)}<small>税込</small></span>`}
+        <span class="brand">${esc(p.brand)}${p.line && p.brand === "ADJUVANT" ? ` <i>${esc(p.line)}</i>` : ""}</span>
+        <span class="name">${esc(p.name)}</span>
+        ${p.nameKana ? `<span class="kana">${esc(p.nameKana)}</span>` : ""}
+        ${g.soldout ? `<span class="soldout">SOLD OUT</span>` : `<span class="price">${yen(g.min)}${many ? "〜" : ""}<small>税込</small></span>`}
       </div></a>`;
   }
 
+  function filtered() {
+    const q = query.trim().toLowerCase();
+    return GROUPED.filter(g => (filter === "すべて" || g.cat === filter) && (brandFilter === "すべて" || g.main.brand === brandFilter)
+      && (!q || g.items.some(p => [p.name, p.nameKana, p.category, p.line, p.brand, p.catch, (p.concerns || []).join(" ")].join(" ").toLowerCase().includes(q))));
+  }
+
+  function renderGrid() {
+    const list = filtered();
+    document.getElementById("count").textContent = `${list.length} items`;
+    document.getElementById("grid").innerHTML = list.map(card).join("") || `<p class="empty" style="grid-column:1/-1">該当する商品がありません。<br>条件を変えてお試しください。</p>`;
+    app.querySelectorAll("[data-f]").forEach(b => b.setAttribute("aria-pressed", b.dataset.f === filter));
+    app.querySelectorAll("[data-b]").forEach(b => b.setAttribute("aria-pressed", b.dataset.b === brandFilter));
+  }
+
   function viewShop(scrollToItems) {
-    const brands = [...new Set(PRODUCTS.map(p => p.brand))];
-    const tabs = ["すべて", ...Object.keys(GROUPS).filter(g => PRODUCTS.some(p => groupOf(p.category) === g)), ...brands];
-    const list = PRODUCTS.filter(p => filter === "すべて" || groupOf(p.category) === filter || p.brand === filter);
+    const brands = [...new Set(GROUPED.map(g => g.main.brand))];
+    const tabs = ["すべて", ...["スキンケア", "ヘアケア", "ボディ", "メイク", "その他"].filter(c => GROUPED.some(g => g.cat === c))];
     app.innerHTML = `
     <section class="hero">
       ${threadSVG()}
@@ -129,38 +165,60 @@
       </div>
     </section>
 
-    ${NEWS && NEWS.length ? "" : "<!--"}<section class="sec"><div class="wrap sec-row">
+    ${NEWS && NEWS.length ? `<section class="sec"><div class="wrap sec-row">
       <h2 class="vlabel">お知らせ</h2>
-      <ul class="news">${(NEWS || []).map(n => `<li><time>${esc(n.date)}</time><span>${esc(n.text)}</span></li>`).join("")}</ul>
-    </div></section>${NEWS && NEWS.length ? "" : "-->"}
+      <ul class="news">${NEWS.map(n => `<li><time>${esc(n.date)}</time><span>${esc(n.text)}</span></li>`).join("")}</ul>
+    </div></section>` : ""}
+
+    <section class="sec brands"><div class="wrap">
+      <div class="heading"><h2><small>Brands ${curl}</small>取り扱いブランド</h2></div>
+      <div class="brand-cards">
+        ${brands.map(b => `<button class="brand-card" data-b="${esc(b)}" data-jump="1"><b>${esc(b)}</b><span>${esc({ ADJUVANT: "アジュバン", BIOLAB: "バイオラブ" }[b] || "")}</span><small>${GROUPED.filter(g => g.main.brand === b).length} items</small></button>`).join("")}
+      </div>
+    </div></section>
 
     <section class="sec" id="items"><div class="wrap">
       <div class="heading">
         <h2><small>Items ${curl}</small>商品一覧</h2>
-        <span class="count">${list.length} items</span>
+        <span class="count" id="count"></span>
       </div>
-      <div class="filters" role="toolbar" aria-label="絞り込み">
-        ${tabs.map(t => `<button data-f="${esc(t)}" aria-pressed="${t === filter}">${esc(t)}</button>`).join("")}
+      <div class="toolbar">
+        <div class="seg" role="group" aria-label="ブランド">${["すべて", ...brands].map(b => `<button data-b="${esc(b)}">${esc(b === "すべて" ? "すべてのブランド" : b)}</button>`).join("")}</div>
+        <label class="search"><span class="visually-hidden">商品を検索</span><input id="q" type="search" placeholder="商品名・お悩みで検索（例：乾燥、シャンプー）" value="${esc(query)}"></label>
       </div>
-      <div class="grid">${list.map(card).join("") || `<p class="empty" style="grid-column:1/-1">該当する商品がありません。</p>`}</div>
+      <div class="filters" role="toolbar" aria-label="カテゴリ">
+        ${tabs.map(t => `<button data-f="${esc(t)}">${esc(t)}</button>`).join("")}
+      </div>
+      <div class="grid" id="grid"></div>
     </div></section>`;
-    app.querySelectorAll("[data-f]").forEach(b => (b.onclick = () => {
-      filter = b.dataset.f;
-      const y = scrollY; viewShop(); scrollTo(0, y);
+    renderGrid();
+    app.querySelectorAll("[data-f]").forEach(b => (b.onclick = () => { filter = b.dataset.f; renderGrid(); }));
+    app.querySelectorAll("[data-b]").forEach(b => (b.onclick = () => {
+      brandFilter = b.dataset.b; renderGrid();
+      if (b.dataset.jump) document.getElementById("items").scrollIntoView({ behavior: "smooth" });
     }));
+    const q = document.getElementById("q");
+    q.oninput = () => { query = q.value; renderGrid(); };
     drawThread();
     if (scrollToItems) document.getElementById("items").scrollIntoView();
   }
 
   function viewItem(id) {
-    const p = P(id);
-    if (!p) return viewShop();
+    const g = G(id) || GROUPED.find(x => x.items.some(p => p.id === id));
+    if (!g) return viewShop();
+    let p = g.main;
     detailQty = 1;
-    const chips = [p.line && `${p.line} シリーズ`, p.category, p.quasiDrug && "医薬部外品"].filter(Boolean);
-    const buyControls = (cls) => p.soldout
+    const chips = [p.line && `${p.line}`, p.category, p.quasiDrug && "医薬部外品"].filter(Boolean);
+    const multi = g.items.length > 1;
+    const sizes = multi ? `<div class="sizes" role="radiogroup" aria-label="サイズ・種類">
+        ${g.items.map(x => `<label class="${x.soldout ? "off" : ""}"><input type="radio" name="sku" value="${esc(x.id)}" ${x === p ? "checked" : ""} ${x.soldout ? "disabled" : ""}><span><b>${esc(x.volume || "通常")}</b><em>${x.soldout ? "SOLD OUT" : yen(x.price)}</em></span></label>`).join("")}
+      </div>` : "";
+    const buyControls = (cls) => g.soldout
       ? `<button class="btn block" disabled>SOLD OUT</button>`
       : `<div class="qty" aria-label="個数"><button class="minus" aria-label="1つ減らす">−</button><span class="qv">1</span><button class="plus" aria-label="1つ増やす">＋</button></div>
          <button class="btn ${cls} add">カートに入れる</button>`;
+    const colorNote = g.items.some(x => /色/.test(x.volume)) ? `<p class="note-box">色のご指定は、お支払い画面の「ご要望」欄にご記入ください。</p>` : "";
+    const related = GROUPED.filter(x => x !== g && x.main.brand === p.brand && x.main.line === p.line && !x.soldout).slice(0, 4);
     app.innerHTML = `<div class="wrap">
       <p class="crumb"><a href="#shop">トップ</a>　/　<a href="#items">商品一覧</a>　/　${esc(p.name)}</p>
       <div class="detail">
@@ -168,25 +226,35 @@
         <div>
           <span class="brand">${esc(p.brand)}</span>
           <h1>${esc(p.name)}</h1>
-          ${p.soldout ? `<p class="soldout">SOLD OUT</p>` : `<p class="price">${yen(p.price)}<small>税込</small></p>`}
+          ${p.nameKana ? `<p class="kana-l">${esc(p.nameKana)}</p>` : ""}
+          <p class="price" id="price">${g.soldout ? `<span class="soldout">SOLD OUT</span>` : `${yen(p.price)}<small>税込</small>`}</p>
           ${p.draft ? `<p class="draftnote">※ 仮データです。商品名・容量・価格は公式情報で確認のうえ確定してください。</p>` : ""}
-          <ul class="chips">${chips.map((c, i) => `<li class="${i === 2 ? "red" : ""}">${esc(c)}</li>`).join("")}</ul>
-          ${p.description ? `<p class="official">${esc(p.description)}</p>` : `<p class="placeholder">商品説明（メーカー公式の文章をそのまま掲載します）</p>`}
+          <ul class="chips">${chips.map(c => `<li class="${c === "医薬部外品" ? "red" : ""}">${esc(c)}</li>`).join("")}</ul>
+          ${sizes}${colorNote}
+          ${p.concerns && p.concerns.length ? `<p class="concerns"><span>こんな方に</span>${p.concerns.map(c => `<i>${esc(c)}</i>`).join("")}</p>` : ""}
+          ${p.catch ? `<p class="catch">${esc(p.catch)}</p>` : ""}
+          ${p.description ? `<p class="official">${esc(p.description)}</p>` : ""}
           <div class="buy">${buyControls("red")}</div>
           <dl class="spec">
-            ${p.volume ? `<dt>容量</dt><dd>${esc(p.volume)}</dd>` : ""}
-            <dt>使い方</dt><dd>${p.howTo ? esc(p.howTo) : `<span style="color:var(--muted)">公式の使用方法を掲載</span>`}</dd>
-            <dt>全成分</dt><dd>${p.ingredients ? esc(p.ingredients) : `<span style="color:var(--muted)">公式の全成分表示を掲載</span>`}</dd>
-            <dt>ブランド</dt><dd>${esc(p.brand)}</dd>
+            <dt>容量</dt><dd id="vol">${esc(p.volume || "—")}</dd>
+            ${p.howTo ? `<dt>使い方</dt><dd>${esc(p.howTo)}</dd>` : ""}
+            ${p.ingredients ? `<dt>全成分</dt><dd class="ing">${esc(p.ingredients)}</dd>` : ""}
+            <dt>ブランド</dt><dd>${esc(p.brand)}${p.line ? `／${esc(p.line)}` : ""}</dd>
             ${p.officialUrl ? `<dt>公式情報</dt><dd><a href="${esc(p.officialUrl)}" target="_blank" rel="noopener">メーカーサイトで見る</a></dd>` : ""}
           </dl>
         </div>
       </div>
+      ${related.length ? `<section class="related"><h2 class="rel-h">同じシリーズの商品</h2><div class="grid">${related.map(card).join("")}</div></section>` : ""}
       <div class="mbar">${buyControls("red")}</div>
     </div>`;
     document.body.classList.add("with-mbar");
     const qvs = app.querySelectorAll(".qv");
     const setQ = q => { detailQty = Math.max(1, Math.min(MAXQ, q)); qvs.forEach(s => (s.textContent = detailQty)); };
+    app.querySelectorAll("[name=sku]").forEach(r => (r.onchange = () => {
+      p = P(r.value);
+      document.getElementById("price").innerHTML = `${yen(p.price)}<small>税込</small>`;
+      document.getElementById("vol").textContent = p.volume || "—";
+    }));
     app.querySelectorAll(".minus").forEach(b => (b.onclick = () => setQ(detailQty - 1)));
     app.querySelectorAll(".plus").forEach(b => (b.onclick = () => setQ(detailQty + 1)));
     app.querySelectorAll(".add").forEach(b => (b.onclick = () => {
