@@ -5,10 +5,6 @@
   "freeShippingOver": 11000,
   "maxQtyPerItem": 10,
   "deliveryNote": "ご入金確認後、3営業日以内に発送します（土日祝を除く）",
-  "news": [
-    { "date": "2026.11.20", "text": "salon ito オンラインストアをオープンしました。" },
-    { "date": "2026.11.20", "text": "11,000円（税込）以上のご注文で送料無料です。" }
-  ],
   "legal": {
     "seller": "【要入力】salon ito（屋号）／運営者 妹尾 沙月",
     "manager": "【要入力】妹尾 沙月",

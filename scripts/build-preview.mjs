@@ -5,7 +5,7 @@ import { readFileSync, writeFileSync, mkdirSync } from "node:fs";
 const html = readFileSync("public/index.html", "utf8");
 const css = readFileSync("public/assets/style.css", "utf8");
 const js = readFileSync("public/assets/app.js", "utf8");
-const data = { products: JSON.parse(readFileSync("public/data/products.json", "utf8")), shop: JSON.parse(readFileSync("public/data/shop.json", "utf8")) };
+const data = { products: JSON.parse(readFileSync("public/data/products.json", "utf8")), shop: JSON.parse(readFileSync("public/data/shop.json", "utf8")), news: JSON.parse(readFileSync("public/data/news.json", "utf8")) };
 
 const head = html.match(/<head>([\s\S]*?)<\/head>/)[1]
   .replace(/<meta charset[^>]*>\s*/, "").replace(/<meta name="viewport"[^>]*>\s*/, "")

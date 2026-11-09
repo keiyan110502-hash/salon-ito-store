@@ -7,12 +7,12 @@
   const app = document.getElementById("app");
 
   /* ---------- data ---------- */
-  let PRODUCTS = [], SHOP = {};
+  let PRODUCTS = [], SHOP = {}, NEWS = [];
   try {
-    if (window.__ITO_DATA__) ({ products: PRODUCTS, shop: SHOP } = window.__ITO_DATA__);
+    if (window.__ITO_DATA__) ({ products: PRODUCTS, shop: SHOP, news: NEWS } = window.__ITO_DATA__);
     else {
-      const [p, s] = await Promise.all([fetch("data/products.json"), fetch("data/shop.json")]);
-      PRODUCTS = await p.json(); SHOP = await s.json();
+      const [p, s, n] = await Promise.all([fetch("data/products.json"), fetch("data/shop.json"), fetch("data/news.json").catch(() => null)]);
+      PRODUCTS = await p.json(); SHOP = await s.json(); NEWS = n && n.ok ? await n.json() : [];
     }
   } catch (e) {
     app.innerHTML = `<div class="wrap empty">商品情報を読み込めませんでした。時間をおいて再度お試しください。</div>`;
@@ -125,10 +125,10 @@
       </div>
     </section>
 
-    <section class="sec"><div class="wrap sec-row">
+    ${NEWS && NEWS.length ? "" : "<!--"}<section class="sec"><div class="wrap sec-row">
       <h2 class="vlabel">お知らせ</h2>
-      <ul class="news">${(SHOP.news || []).map(n => `<li><time>${esc(n.date)}</time><span>${esc(n.text)}</span></li>`).join("")}</ul>
-    </div></section>
+      <ul class="news">${(NEWS || []).map(n => `<li><time>${esc(n.date)}</time><span>${esc(n.text)}</span></li>`).join("")}</ul>
+    </div></section>${NEWS && NEWS.length ? "" : "-->"}
 
     <section class="sec" id="items"><div class="wrap">
       <div class="heading">

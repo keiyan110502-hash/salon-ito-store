@@ -3,12 +3,15 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "build": "node scripts/fetch-sheet.mjs && node scripts/csv-to-json.mjs",
     "products": "node scripts/csv-to-json.mjs",
-    "preview": "node scripts/build-preview.mjs",
+    "preview": "node scripts/csv-to-json.mjs && node scripts/build-preview.mjs",
     "dev": "netlify dev"
   },
   "dependencies": {
     "stripe": "^23.1.0"
   },
-  "engines": { "node": ">=20" }
+  "engines": {
+    "node": ">=20"
+  }
 }

@@ -14,37 +14,41 @@ public/                 … 公開されるサイト（Netlify の公開フォ�
   assets/style.css      … デザイン（白地・明朝体・赤い糸のモチーフ）
   assets/app.js         … 画面（商品一覧・詳細・カート・確認・完了・マイページ・特商法・プライバシー・ご利用ガイド）
   data/products.json    … 商品データ（data/products.csv から自動生成）
-  data/shop.json        … 送料、お知らせ、特商法表記の事業者情報
+  data/shop.json        … 送料、特商法表記の事業者情報
   images/products/      … 商品画像（正方形・800×800px 以上を推奨）
 netlify/functions/      … サーバー処理
   checkout.mjs          … Stripe の決済画面を作る（金額はサーバー側で計算）
   stripe-webhook.mjs    … 決済完了の通知を受けて、GAS に記録とメール送信を依頼
   order.mjs             … 完了画面に注文内容を表示
 gas/Code.gs             … スプレッドシートへの記録とメール送信（Google Apps Script）
-data/products.csv       … 商品の元データ（スプレッドシートで編集して CSV で保存）
-scripts/                … 商品の CSV→JSON 変換と、デザイン確認用プレビューの作成
+data/products.csv       … 商品の初期データ（運用時は管理スプレッドシートから自動取得）
+data/news.csv           … お知らせの初期データ
+scripts/                … シートの取り込み、CSV→JSON 変換、デザイン確認用プレビューの作成
 docs/launch-guide.md    … 決済の申請、法対応、公開前チェックリスト
+（妹尾さん向けの運用マニュアルは Claude Docs の「salon ito オンラインストア 運用キット」）
 ```
 
-## 商品データの更新
+## 商品データの更新（運用時）
 
-1. `data/products.csv` を Googleスプレッドシートで開き、1行に1商品を入力します。
-   - `id`：半角英小文字・数字・ハイフンのみ（例 `adj-fogsui`）
-   - `price`：税込の整数
-   - `draft`：TRUE の間は「仮データ」の注記が出ます
-   - `quasi_drug`：医薬部外品なら TRUE
-   - `soldout`：TRUE で SOLD OUT 表示になり、購入できなくなります
-   - `description` / `how_to_use` / `ingredients`：メーカー公式の文章をそのまま貼り付けます（セル内の改行も使えます）
-2. 「ファイル > ダウンロード > CSV」で `data/products.csv` に上書き保存します。
-3. 商品画像は `public/images/products/商品id.jpg` に置き、CSV の `image` 列に `images/products/商品id.jpg` と書きます。
-4. `npm run products` で JSON に変換されます。Netlify では公開のたびに自動で変換されます。
+商品とお知らせは、**管理スプレッドシート**の「商品」「お知らせ」シートで編集します。編集したら、メニュー「salon ito > サイトに反映する」を押します。
+
+1. GAS が Netlify の Build hook を呼びます。
+2. Netlify がビルド時に、「ウェブに公開」した CSV（`PRODUCTS_CSV_URL` / `NEWS_CSV_URL`）を取り込みます（`scripts/fetch-sheet.mjs`）。
+3. `data/*.csv` から `public/data/*.json` を作ります（`scripts/csv-to-json.mjs`）。
+4. サイトが更新されます。
+
+補足：
+- 「画像」列に Google ドライブの共有リンクがあれば、ビルド時に画像をダウンロードして `public/images/products/商品ID.jpg` として同梱します。ダウンロードに失敗しても、ビルドは止めずに仮の画像で表示します。
+- 2つの CSV URL が未設定のときは、リポジトリ内の `data/products.csv` と `data/news.csv` を使います（初期データ兼バックアップ）。
+- 列の見出しは日本語です（商品ID・ブランド・シリーズ・カテゴリ・商品名・容量・価格(税込)・公開・仮データ・画像・ラベル・医薬部外品・売り切れ・商品説明・使い方・全成分・公式URL）。
+- アジュバン商品は、メーカー希望小売価格（定価）で入力します。
 
 ## 公開までの手順
 
 ### 1. Netlify にサイトを作る
 1. このフォルダを GitHub のリポジトリにプッシュします。
 2. Netlify で「Add new site > Import an existing project」からそのリポジトリを選びます。ビルド設定は `netlify.toml` から自動で読み込まれます。
-3. 「Site configuration > Environment variables」に、`.env.example` にある4つの値を登録します。
+3. 「Site configuration > Environment variables」に、`.env.example` にある6つの値を登録します。
 
 ### 2. Stripe（まずはテストモード）
 1. Stripe でアカウントを作り、テストモードの「シークレットキー（`sk_test_`）」を `STRIPE_SECRET_KEY` に登録します。
@@ -55,11 +59,18 @@ docs/launch-guide.md    … 決済の申請、法対応、公開前チェック�
 4. 「設定 > 決済手段」で、使う支払い方法を ON にします。
 5. テスト用カード `4242 4242 4242 4242`（有効期限は未来の日付、セキュリティコードは任意）で、購入を最後まで試します。
 
-### 3. スプレッドシート連携（GAS）
-1. `gas/Code.gs` の先頭にある手順どおりに設定します。
-2. 発行されたウェブアプリの URL を `GAS_WEBAPP_URL` に登録します。
-3. 同じランダム文字列を、`GAS_SHARED_SECRET` と GAS のスクリプトプロパティ `SHARED_SECRET` の両方に設定します。
-4. GAS エディタで `testOrder` を実行すると、テスト行が1件記録され、メールが届くことを確認できます。
+### 3. 管理スプレッドシート（GAS）
+1. サロンの Google アカウントでスプレッドシートを作ります。
+2. `gas/Code.gs` の先頭にある手順どおりに設定します。
+   - スクリプトプロパティ：`SHARED_SECRET` / `SALON_EMAIL` / `NETLIFY_BUILD_HOOK`
+   - 関数 `setup` を実行
+   - ウェブアプリとしてデプロイ
+3. `data/products.csv` を「商品」シートに、`data/news.csv` を「お知らせ」シートにインポートします。
+4. 「商品」「お知らせ」シートをそれぞれ「ウェブに公開（CSV）」し、URL を Netlify の `PRODUCTS_CSV_URL` / `NEWS_CSV_URL` に登録します。
+5. Netlify の「Build hooks」で URL を作り、スクリプトプロパティ `NETLIFY_BUILD_HOOK` に登録します。
+6. 発行されたウェブアプリの URL を `GAS_WEBAPP_URL` に登録します。
+7. 同じランダム文字列を、`GAS_SHARED_SECRET` と GAS のスクリプトプロパティ `SHARED_SECRET` の両方に設定します。
+8. GAS エディタで `testOrder` を実行すると、テスト行が1件記録され、メールが届くことを確認できます。
 
 ### 4. 本番に切り替える
 Stripe の本番審査が通ったら、次の2つを本番用の値に差し替えます。

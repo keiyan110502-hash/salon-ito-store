@@ -42,7 +42,8 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background
 .hnav{display:flex;gap:2px;align-items:center;font-size:12px;letter-spacing:.12em}
 .hnav a{text-decoration:none;padding:8px 10px;position:relative}
 .hnav a:hover{color:var(--red)}
-.cart-link .dot{position:absolute;top:2px;right:0;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--red);color:#fff;font-family:var(--f-latin);font-size:11px;line-height:16px;text-align:center;letter-spacing:0;font-variant-numeric:tabular-nums}
+.cart-link{padding-right:16px!important}
+.cart-link .dot{position:absolute;top:0;right:-2px;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:var(--red);color:#fff;font-family:var(--f-latin);font-size:11px;line-height:16px;text-align:center;letter-spacing:0;font-variant-numeric:tabular-nums}
 
 /* ───────── hero ───────── */
 .hero{position:relative;overflow:hidden;min-height:540px}
@@ -65,6 +66,7 @@ header.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background
 
 /* ───────── sections ───────── */
 .sec{padding-block:48px}
+#items{scroll-margin-top:72px}
 .sec-row{display:grid;grid-template-columns:56px minmax(0,1fr);gap:24px}
 .vlabel{writing-mode:vertical-rl;font-size:13px;letter-spacing:.4em;margin:0;display:flex;align-items:center;gap:12px;font-weight:400}
 .vlabel::before{content:"";width:1px;height:28px;background:var(--red)}
@@ -147,7 +149,8 @@ dl.spec dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 .li .qty{height:36px}
 .li .qty button{width:32px}
 .ulink{background:none;border:0;padding:0;font-size:11px;color:var(--muted);text-decoration:underline;text-underline-offset:3px;letter-spacing:.1em}
-.sum{display:grid;grid-template-columns:1fr auto;gap:8px;font-size:13px}
+.sum{display:grid;grid-template-columns:1fr auto;gap:8px 0;font-size:13px}
+.sum .v{padding-left:12px}
 .sum .v{font-family:var(--f-latin);font-size:16px;font-variant-numeric:tabular-nums;text-align:right}
 .sum .t{border-top:1px solid var(--line);padding-top:14px;margin-top:6px;font-weight:400}
 .sum .t.v{font-size:22px}
@@ -261,6 +264,8 @@ table.sheet .rn{background:var(--well);color:var(--muted);text-align:center;widt
   .mp-nav{flex-direction:row;gap:20px;overflow-x:auto}
   .kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
   .doc th{width:8em}
+  .final{grid-template-columns:1fr;gap:0}
+  .final dd{margin-bottom:12px}
 }
 @media (max-width:380px){
   .hero-mark{font-size:48px}
