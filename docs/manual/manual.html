@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>salon ito オンラインストア 運用マニュアル</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;1,300;1,400&family=Noto+Serif+JP:wght@300;400;500&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* A4 manual: portrait pages by default, landscape pages for the Gantt chart and the swimlane flow */
+:root{
+  --ink:#2C2A28; --muted:#7D7873; --line:#E6E2DD; --well:#F6F5F3;
+  --red:#B4232C; --red-soft:#FBEFF0; --red-mid:#E7B9BD;
+  --admin:#3B4A5A; --admin-soft:#E9EDF1; --auto:#8E8984; --auto-soft:#F1F0EE;
+  --both:#8C5A7A;
+  --f-min:"Noto Serif JP","Hiragino Mincho ProN",serif;
+  --f-sans:"Noto Sans JP","Hiragino Sans",sans-serif;
+  --f-lat:"Cormorant Garamond",serif;
+}
+@page{size:A4;margin:0}
+@page land{size:A4 landscape;margin:0}
+*{box-sizing:border-box}
+html,body{margin:0;background:#fff;color:var(--ink)}
+body{font-family:var(--f-sans);font-size:9.6pt;line-height:1.75;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.page{width:210mm;height:297mm;padding:16mm 16mm 14mm;position:relative;overflow:hidden;page-break-after:always;display:flex;flex-direction:column}
+.page.land{page:land;width:297mm;height:210mm;padding:12mm 14mm 10mm}
+.page:last-child{page-break-after:auto}
+.ph{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--ink);padding-bottom:6px;margin-bottom:14px}
+.ph h2{font-family:var(--f-min);font-weight:400;font-size:19pt;letter-spacing:.12em;margin:0}
+.ph .no{font-family:var(--f-lat);font-style:italic;font-size:13pt;color:var(--red)}
+.lead{font-size:11pt;line-height:1.8;margin:0 0 14px;font-weight:500}
+.lead em{font-style:normal;color:var(--red)}
+.foot{position:absolute;left:16mm;right:16mm;bottom:8mm;display:flex;justify-content:space-between;font-family:var(--f-lat);font-size:9pt;color:var(--muted)}
+.land .foot{left:14mm;right:14mm;bottom:5mm}
+h3{font-family:var(--f-min);font-weight:500;font-size:12pt;letter-spacing:.08em;margin:14px 0 8px;display:flex;align-items:center;gap:8px}
+h3::before{content:"";width:14px;height:1px;background:var(--red)}
+p{margin:0 0 8px}
+svg{display:block;width:100%;height:auto}
+svg text{font-family:var(--f-sans)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.card{border:1px solid var(--line);border-radius:6px;padding:10px 12px;background:#fff}
+.card h4{margin:0 0 4px;font-size:10.5pt}
+.card p{font-size:9pt;margin:0;color:#4a4744}
+.tag{display:inline-block;font-size:8pt;font-weight:700;padding:1px 8px;border-radius:999px;letter-spacing:.04em}
+.t-seno{background:var(--red-soft);color:var(--red)}
+.t-admin{background:var(--admin-soft);color:var(--admin)}
+.t-auto{background:var(--auto-soft);color:#5d5955}
+.t-cust{background:#fff;color:var(--ink);border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;font-size:9pt}
+th,td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{font-weight:700;background:var(--well);font-size:8.5pt}
+.note{font-size:8.5pt;color:var(--muted)}
+.callout{border-left:2px solid var(--red);background:var(--red-soft);padding:8px 12px;font-size:9.5pt;margin:8px 0}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:middle}
+/* cover */
+.cover{justify-content:space-between;padding:22mm 20mm}
+.cover .mark{font-family:var(--f-lat);font-style:italic;font-weight:300;font-size:58pt;line-height:1;margin:0}
+.cover .sub{font-family:var(--f-lat);letter-spacing:.4em;font-size:11pt;color:var(--muted);margin-top:8px}
+.cover h1{font-family:var(--f-min);font-weight:400;font-size:24pt;letter-spacing:.2em;margin:0 0 6px}
+.cover .meta{font-size:10pt;color:var(--muted);line-height:1.9}
+.cover-thread{position:absolute;right:0;top:0;height:100%;width:62%}
+.toc{list-style:none;padding:0;margin:0;font-size:10pt;columns:2;column-gap:12mm}
+.toc li{display:flex;gap:10px;padding:3px 0;border-bottom:1px dotted var(--line);break-inside:avoid}
+.toc b{font-family:var(--f-lat);font-style:italic;color:var(--red);font-weight:400;width:1.6em}
+.phones{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.phones figure{margin:0}
+.phones img{width:100%;border:1px solid var(--line);border-radius:10px;display:block}
+.phones figcaption{font-size:8pt;text-align:center;color:var(--muted);margin-top:3px}
+.steps{display:grid;gap:6px;counter-reset:s;margin:0;padding:0;list-style:none}
+.steps li{display:grid;grid-template-columns:22px 1fr;gap:8px;align-items:start;font-size:9.5pt}
+.steps li::before{counter-increment:s;content:counter(s);width:20px;height:20px;border-radius:50%;background:var(--red);color:#fff;font-size:9pt;display:grid;place-items:center;font-weight:700;margin-top:1px}
+.check{list-style:none;padding:0;margin:0;display:grid;gap:3px;font-size:9pt}
+.check li::before{content:"□";margin-right:6px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+<!-- ============ 1. COVER ============ -->
+<section class="page cover">
+  <svg class="cover-thread" viewBox="0 0 400 1100" preserveAspectRatio="xMaxYMid slice" aria-hidden="true">
+    <path d="M410 -10 C320 80 230 150 245 260 C258 350 330 390 300 450 C272 506 190 486 200 424 C210 362 300 380 296 470 C290 580 170 660 214 790 C250 896 370 960 410 1110" fill="none" stroke="#B4232C" stroke-width="1.6"/>
+    <path d="M410 30 C312 112 220 190 236 292 C250 380 318 420 288 476" fill="none" stroke="#E7B9BD" stroke-width=".9" transform="translate(-14 26)"/>
+  </svg>
+  <div style="position:relative">
+    <p class="mark">salon ito</p>
+    <p class="sub">ONLINE STORE</p>
+  </div>
+  <div style="position:relative;max-width:120mm">
+    <h1>運用マニュアル</h1>
+    <p class="meta">オンラインストアの立ち上げから、毎日の注文対応・商品の更新・売上の確認までをまとめました。<br>サロンオーナー 妹尾 沙月 様／管理者（制作担当）向け</p>
+    <ul class="toc" style="margin-top:14mm">
+      <li><b>1</b>全体像</li>
+      <li><b>2</b>公開までのスケジュール</li>
+      <li><b>3</b>購買・対応フロー</li>
+      <li><b>4</b>役割分担とお客様の画面</li>
+      <li><b>5</b>注文が来たら（毎日の操作）</li>
+      <li><b>6</b>商品・お知らせの更新</li>
+      <li><b>7</b>GitHub とは</li>
+      <li><b>8</b>管理・運営体制</li>
+      <li><b>9</b>お金の流れと会計</li>
+      <li><b>10</b>ドメインの取得</li>
+      <li><b>11</b>困ったとき・チェックリスト</li>
+    </ul>
+    <p class="meta" style="margin-top:12mm">作成日 2026年11月9日　第1版</p>
+  </div>
+</section>
+
+<!-- ============ 2. OVERVIEW ============ -->
+<section class="page">
+  <div class="ph"><h2>全体像</h2><span class="no">01</span></div>
+  <p class="lead">妹尾さんが触るのは<em>「管理スプレッドシート」1つと、届くメールだけ</em>です。決済・記録・メール送信は自動で進みます。</p>
+  <svg id="overview" viewBox="0 0 1000 560"></svg>
+  <div class="grid3" style="margin-top:10px">
+    <div class="card"><span class="tag t-seno">妹尾さん</span><h4 style="margin-top:6px">管理スプレッドシート</h4><p>商品・お知らせの編集、注文の確認、発送メールの送信、月別の売上。ふだんはここだけ。</p></div>
+    <div class="card"><span class="tag t-auto">自動</span><h4 style="margin-top:6px">Stripe（決済）</h4><p>カード・Apple Pay・Google Pay・PayPay・コンビニ払い。カード情報はサロン側に残りません。</p></div>
+    <div class="card"><span class="tag t-admin">管理者</span><h4 style="margin-top:6px">GitHub ＋ Netlify</h4><p>サイトの設計図の保管と公開。デザイン変更や不具合対応のときだけ使います。</p></div>
+  </div>
+  <h3>このマニュアルの読み方</h3>
+  <div class="grid2">
+    <div class="callout"><b>妹尾さんがまず読むページ</b><br>3章 購買・対応フロー ／ 5章 注文が来たら ／ 6章 商品・お知らせの更新 ／ 9章 お金の流れ ／ 11章 困ったとき</div>
+    <div class="callout" style="border-color:var(--admin);background:var(--admin-soft)"><b>管理者が使うページ</b><br>2章 スケジュール ／ 7章 GitHub ／ 8章 管理・運営体制 ／ 10章 ドメイン ／ 11章 チェックリスト</div>
+  </div>
+  <div class="foot"><span>salon ito Online Store — 運用マニュアル</span><span>2</span></div>
+</section>
+
+<!-- ============ 3. GANTT ============ -->
+<section class="page land">
+  <div class="ph"><h2>公開までのスケジュール</h2><span class="no">02</span></div>
+  <p class="lead" style="margin-bottom:8px">着手から<em>約2週間半（11月25日ごろ）</em>で公開できる見込みです。決め手は Stripe の審査（数日）で、PayPay は公開後に追加しても構いません。</p>
+  <svg id="gantt" viewBox="0 0 1500 640"></svg>
+  <p class="note" style="margin-top:4px">日付は目安です。審査の期間はStripe・PayPay側の状況で前後します。土日は作業を入れていません（グレーの列）。</p>
+  <div class="foot"><span>salon ito Online Store — 運用マニュアル</span><span>3</span></div>
+</section>
+
+<!-- ============ 4. FLOW ============ -->
+<section class="page land">
+  <div class="ph"><h2>購買・対応フロー</h2><span class="no">03</span></div>
+  <p class="lead" style="margin-bottom:6px">お客様が決済ボタンを押すと、<em>記録とメールは自動</em>。妹尾さんは「郵送」か「サロンで受け取り」かで、次の動きが分かれます。</p>
+  <svg id="flow" viewBox="0 0 1640 700"></svg>
+  <p class="note" style="margin-top:2px">コンビニ払いは、お客様が入金した時点で「決済を確認」に進みます（入金前の注文は記録もメールもされません）。</p>
+  <div class="foot"><span>salon ito Online Store — 運用マニュアル</span><span>4</span></div>
+</section>
+
+<!-- ============ 5. ROLES + SCREENS ============ -->
+<section class="page">
+  <div class="ph"><h2>役割分担とお客様の画面</h2><span class="no">04</span></div>
+  <p class="lead">お客様・自動・妹尾さん・管理者の4者で、それぞれがやることは下の表のとおりです。</p>
+  <table>
+    <thead><tr><th style="width:24%">場面</th><th><span class="tag t-cust">お客様</span></th><th><span class="tag t-auto">自動</span></th><th><span class="tag t-seno">妹尾さん</span></th><th><span class="tag t-admin">管理者</span></th></tr></thead>
+    <tbody>
+      <tr><td>注文・支払い</td><td>商品を選び、受け取り方法を選んで支払う</td><td>決済確認、シート記録、メール2通</td><td>—</td><td>—</td></tr>
+      <tr><td>郵送</td><td>届いた商品を受け取る</td><td>発送完了メール</td><td>梱包・発送、メニューで「発送済み」</td><td>—</td></tr>
+      <tr><td>サロンで受け取り</td><td>メールを見て来店し、注文番号を伝える</td><td>ご用意完了メール</td><td>商品を用意、メニューで「ご用意完了」→ お渡し後「受け渡し済み」</td><td>—</td></tr>
+      <tr><td>商品・お知らせ</td><td>—</td><td>サイトに反映（2〜3分）</td><td>シートを編集し「サイトに反映」</td><td>最初の登録を手伝う</td></tr>
+      <tr><td>返金・トラブル</td><td>サロンに連絡</td><td>—</td><td>Stripe で返金、お客様へ連絡</td><td>原因調査・修正</td></tr>
+      <tr><td>売上・会計</td><td>—</td><td>Stripe → 口座 → マネーフォワード</td><td>月1回確認</td><td>集計の見方をサポート</td></tr>
+    </tbody>
+  </table>
+  <h3>お客様のスマートフォンに表示される画面</h3>
+  <div class="phones">
+    <figure><img src="img/01-top.png" alt=""><figcaption>① トップ（QRから）</figcaption></figure>
+    <figure><img src="img/03-item.png" alt=""><figcaption>② 商品ページ</figcaption></figure>
+    <figure><img src="img/08-pickup.png" alt=""><figcaption>③ 受け取り方法を選ぶ</figcaption></figure>
+    <figure><img src="img/06-done.png" alt=""><figcaption>④ 注文完了</figcaption></figure>
+  </div>
+  <div class="foot"><span>salon ito Online Store — 運用マニュアル</span><span>5</span></div>
+</section>
+
+<!-- ============ 6. DAILY ============ -->
+<section class="page">
+  <div class="ph"><h2>注文が来たら</h2><span class="no">05</span></div>
+  <p class="lead">サロンのメールに<em>「【新規注文】○○様 ¥○○」</em>が届いたら、決済は完了しています。受け取り方法を見て、どちらかの手順で進めます。</p>
+  <svg id="menu" viewBox="0 0 1000 250"></svg>
+  <div class="grid2" style="margin-top:12px">
+    <div class="card" style="border-color:var(--red-mid)">
+      <h4>郵送の注文</h4>
+      <ol class="steps" style="margin-top:6px">
+        <li>注文メールで商品・個数・お届け先を確認</li>
+        <li>梱包して発送（伝票の宛先は「注文一覧」からコピー）</li>
+        <li>「注文一覧」でその注文の行をクリック</li>
+        <li>メニュー「salon ito」→「発送済み／ご用意完了にしてメールを送る」</li>
+        <li>配送会社と追跡番号を入れて OK → お客様に発送完了メール</li>
+      </ol>
+    </div>
+    <div class="card" style="border-color:var(--red-mid)">
+      <h4>サロンで受け取りの注文</h4>
+      <ol class="steps" style="margin-top:6px">
+        <li>注文メールで商品・個数を確認</li>
+        <li>商品を用意し、名前を書いて取り置き</li>
+        <li>「注文一覧」でその注文の行をクリック → 同じメニューを押す</li>
+        <li>お客様に「ご用意ができました」メールが届く</li>
+        <li>来店時に注文番号を確認してお渡し → メニュー「受け渡し済みにする」</li>
+      </ol>
+    </div>
+  </div>
+  <div class="grid2" style="margin-top:12px">
+    <div class="callout"><b>コンビニ払い</b><br>入金されるまでメールは来ません。メールが来た注文だけ対応すれば大丈夫です。3日以内に入金がなければ自動でキャンセルされます。</div>
+    <div class="callout"><b>キャンセル・返金</b><br>Stripe の「支払い」でお客様を探し「返金」。シートのステータスを「返金済み」に書き換えます。不良品は交換で対応すると手数料がかかりません。</div>
+  </div>
+  <p class="note" style="margin-top:8px">初めてメニューを使うときだけ、Google の「承認が必要です」画面が出ます。サロンのアカウントを選んで許可してください。</p>
+  <div class="foot"><span>salon ito Online Store — 運用マニュアル</span><span>6</span></div>
+</section>
+
+<!-- ============ 7. PRODUCTS ============ -->
+<section class="page">
+  <div class="ph"><h2>商品・お知らせの更新</h2><span class="no">06</span></div>
+  <p class="lead">「商品」シートを書き換えて<em>メニュー「サイトに反映する」</em>を押すと、2〜3分でサイトが新しくなります。</p>
+  <svg id="publish" viewBox="0 0 1000 200"></svg>
+  <h3>「商品」シートの列（早見表）</h3>
+  <table>
+    <thead><tr><th style="width:22%">列</th><th>書き方</th><th style="width:26%">例</th></tr></thead>
+    <tbody>
+      <tr><td>商品ID</td><td>半角英小文字・数字・ハイフン。一度決めたら変えない</td><td>adj-fogsui</td></tr>
+      <tr><td>ブランド／シリーズ／カテゴリ</td><td>ブランドは絞り込みボタンになる。カテゴリは「化粧水」「シャンプー」など</td><td>ADJUVANT／—／ボディ</td></tr>
+      <tr><td>商品名・容量</td><td>メーカー公式の表記のまま</td><td>フォグスイ</td></tr>
+      <tr><td>価格(税込)</td><td>数字だけ。<b>アジュバンは定価（メーカー希望小売価格）</b></td><td>3190</td></tr>
+      <tr><td>公開／売り切れ</td><td>チェックで切り替え。販売をやめるときは行を消さず「公開」を外す</td><td>☑／☐</td></tr>
+      <tr><td>画像</td><td>Google ドライブの共有リンク（リンクを知っている全員）。正方形 800px 以上</td><td>drive.google.com/…</td></tr>
+      <tr><td>ラベル</td><td>画像の左上に出る短い言葉</td><td>NEW／サロン人気</td></tr>
+      <tr><td>商品説明・使い方・全成分</td><td>メーカー公式の文章をそのまま貼る</td><td>—</td></tr>
+    </tbody>
+  </table>
+  <div class="callout" style="margin-top:12px"><b>薬機法のために</b>　公式の文章は変えずに使います。自分の言葉を足すときは「シミが消える」「治る」「発毛」「○日で効果」のような効果の言い切りは書きません。</div>
+  <p style="margin-top:8px"><b>お知らせ</b>　「お知らせ」シートに日付（2026.12.01 の形）と本文を書き、同じく「サイトに反映する」。新しいものを一番上に。</p>
+  <div class="foot"><span>salon ito Online Store — 運用マニュアル</span><span>7</span></div>
+</section>
+
+<!-- ============ 8. GITHUB ============ -->
+<section class="page">
+  <div class="ph"><h2>GitHub とは</h2><span class="no">07</span></div>
+  <p class="lead">GitHub は、<em>サイトの「設計図」を保管し、変更の履歴をすべて残しておく場所</em>です。妹尾さんがふだん操作する必要はありません。</p>
+  <svg id="github" viewBox="0 0 1000 300"></svg>
+  <h3>身近なものに例えると</h3>
+  <table>
+    <thead><tr><th style="width:24%">GitHub の言葉</th><th style="width:38%">例えると</th><th>salon ito での意味</th></tr></thead>
+    <tbody>
+      <tr><td>リポジトリ</td><td>サロンの「設計図ファイル棚」</td><td>サイトのデザイン・画面・決済のしくみが全部入った保管場所（非公開）</td></tr>
+      <tr><td>コミット</td><td>カルテに書く「施術記録」1回分</td><td>「受け取り方法を追加」など、変更1回ごとの記録。日時と内容が残る</td></tr>
+      <tr><td>履歴を戻す</td><td>以前のカルテを見て元のメニューに戻す</td><td>不具合が出ても、前の正常な状態にすぐ戻せる</td></tr>
+      <tr><td>Netlify との連携</td><td>棚に新しい設計図が入ると、店舗が自動で改装される</td><td>設計図が更新されると、数分で公開サイトに反映される</td></tr>
+    </tbody>
+  </table>
+  <h3>できること・妹尾さんに関係あること</h3>
+  <div class="grid2">
+    <div class="card"><h4>GitHub でできること</h4><p>・変更の履歴を全部残す（誰が・いつ・何を）<br>・問題が起きたら前の状態に戻す<br>・管理者が交代しても設計図ごと引き継げる<br>・非公開なので、許可した人しか見られない</p></div>
+    <div class="card"><h4>妹尾さんがやること</h4><p>・基本的にはありません<br>・商品や価格の変更はスプレッドシートで完結します<br>・将来、管理を自分で持つと決めたら、サロンのアカウントへ「移管」するだけで引き継げます</p></div>
+  </div>
+  <p class="note" style="margin-top:8px">GitHub（ギットハブ）は世界中の開発者が使うサービスで、非公開の保管場所は無料で使えます。</p>
+  <div class="foot"><span>salon ito Online Store — 運用マニュアル</span><span>8</span></div>
+</section>
+
+<!-- ============ 9. GOVERNANCE ============ -->
+<section class="page">
+  <div class="ph"><h2>管理・運営体制</h2><span class="no">08</span></div>
+  <p class="lead">最初は<em>管理者がまとめて担当</em>し、妹尾さんができることを少しずつ増やします。管理者が運用を続けることも、妹尾さんが自走することも選べます。</p>
+  <svg id="phases" viewBox="0 0 1000 560"></svg>
+  <h3>アカウントの名義（どの段階でも変わらない）</h3>
+  <table>
+    <thead><tr><th>サービス</th><th>名義</th><th>管理者の入り方</th></tr></thead>
+    <tbody>
+      <tr><td>Stripe（決済・入金先）</td><td>妹尾さん</td><td>「チーム」に開発者として招待</td></tr>
+      <tr><td>Google（管理スプレッドシート・メール）</td><td>サロンのアカウント</td><td>スプレッドシートを編集者で共有</td></tr>
+      <tr><td>ドメイン・マネーフォワード</td><td>妹尾さん</td><td>設定だけ代行</td></tr>
+      <tr><td>GitHub・Netlify</td><td>当面は管理者（いつでも移管可）</td><td>—</td></tr>
+    </tbody>
+  </table>
+  <div class="foot"><span>salon ito Online Store — 運用マニュアル</span><span>9</span></div>
+</section>
+
+<!-- ============ 10. MONEY ============ -->
+<section class="page">
+  <div class="ph"><h2>お金の流れと会計</h2><span class="no">09</span></div>
+  <p class="lead">売上は Stripe が<em>手数料を差し引いて妹尾さんの口座へ自動で入金</em>し、マネーフォワードに明細が取り込まれます。</p>
+  <svg id="money" viewBox="0 0 1000 300"></svg>
+  <h3>マネーフォワードとの連携（最初に1回だけ）</h3>
+  <ol class="steps">
+    <li>マネーフォワード クラウド会計 →「データ連携」→「新規登録」</li>
+    <li>「Stripe」を検索して選び、Stripe にログインして連携を許可</li>
+    <li>仕訳ルールを登録（下の表）。以後は取り込まれた明細を確認して登録するだけ</li>
+  </ol>
+  <table style="margin-top:8px">
+    <thead><tr><th>明細</th><th>勘定科目の例</th></tr></thead>
+    <tbody>
+      <tr><td>オンラインストアの売上</td><td>売上高（補助科目：オンライン）</td></tr>
+      <tr><td>Stripe の決済手数料</td><td>支払手数料</td></tr>
+      <tr><td>銀行口座への入金</td><td>普通預金（相手は Stripe の残高）</td></tr>
+    </tbody>
+  </table>
+  <p class="note">画面の名称は変わることがあります。勘定科目は税理士さんの指示を優先してください。店頭の Airペイの売上は、これまでどおり別に管理します。</p>
+  <h3>毎月の確認（10分）</h3>
+  <ul class="check">
+    <li>「月別集計」シートで先月の注文件数と売上を見る</li>
+    <li>Stripe の入金額とシートの「入金見込み」が大きくずれていないか確かめる</li>
+    <li>マネーフォワードに取り込まれた明細を登録する</li>
+  </ul>
+  <div class="foot"><span>salon ito Online Store — 運用マニュアル</span><span>10</span></div>
+</section>
+
+<!-- ============ 11. DOMAIN ============ -->
+<section class="page">
+  <div class="ph"><h2>ドメインの取得</h2><span class="no">10</span></div>
+  <p class="lead">おすすめは<em>「salon-ito.jp」</em>です。日本のサロンだと一目で分かり、QRコードやショップカードにも載せやすい名前です。</p>
+  <table>
+    <thead><tr><th style="width:26%">候補</th><th>特徴</th><th style="width:22%">年額の目安</th></tr></thead>
+    <tbody>
+      <tr><td><b>salon-ito.jp</b>（第1候補）</td><td>日本に住所がある人・会社だけが取れる「.jp」。信頼感があり、名前どおりで覚えやすい</td><td>3,000〜5,000円</td></tr>
+      <tr><td>salonito.jp</td><td>ハイフンなし。口頭で伝えやすい。「サロニト」と読まれる可能性あり</td><td>3,000〜5,000円</td></tr>
+      <tr><td>salon-ito.com</td><td>世界共通で安い。.jp が取れなかったときの候補</td><td>1,500〜2,500円</td></tr>
+      <tr><td>ito-salon.jp</td><td>上がすべて使われていた場合の予備</td><td>3,000〜5,000円</td></tr>
+    </tbody>
+  </table>
+  <p class="note">空いているかどうかは、取得サービスの検索窓で確認します（この資料の作成時点では未確認）。料金は初年度の割引と2年目以降の更新料が違うので、<b>更新料</b>で比べてください。</p>
+  <h3>取得からサイトにつながるまで</h3>
+  <svg id="domain" viewBox="0 0 1000 190"></svg>
+  <div class="grid2" style="margin-top:10px">
+    <div class="card"><h4>取得サービスの例</h4><p>ムームードメイン、お名前.com、Xserverドメイン など。妹尾さんの名義・クレジットカードで取得し、<b>自動更新をオン</b>にします（失効するとサイトが表示されなくなります）。</p></div>
+    <div class="card"><h4>あわせて検討</h4><p>shop@salon-ito.jp のような独自アドレスでメールを送るには、別途メールサービス（Google Workspace など・月額制）が必要です。最初は今の Gmail のままでも運用できます。</p></div>
+  </div>
+  <div class="foot"><span>salon ito Online Store — 運用マニュアル</span><span>11</span></div>
+</section>
+
+<!-- ============ 12. HELP ============ -->
+<section class="page">
+  <div class="ph"><h2>困ったとき・チェックリスト</h2><span class="no">11</span></div>
+  <table>
+    <thead><tr><th style="width:36%">こんなとき</th><th>まず確かめること</th></tr></thead>
+    <tbody>
+      <tr><td>「確認メールが届かない」と言われた</td><td>「注文一覧」にあれば注文は成立。迷惑メールフォルダを見てもらい、注文番号を伝える</td></tr>
+      <tr><td>「支払ったのに注文できていない」</td><td>Stripe の「支払い」にあるか。あってシートに無ければ管理者へ</td></tr>
+      <tr><td>商品を変えたのにサイトが変わらない</td><td>5分待ってもう一度「サイトに反映する」。スマホは再読み込み</td></tr>
+      <tr><td>商品画像が出ない</td><td>ドライブの共有が「リンクを知っている全員」になっているか</td></tr>
+      <tr><td>在庫がなくなった</td><td>「売り切れ」にチェック →「サイトに反映する」</td></tr>
+      <tr><td>不審な注文（同じ人が大量・住所が不自然）</td><td>発送前に Stripe でその支払いのリスク評価を確認。心配なら返金して発送しない</td></tr>
+    </tbody>
+  </table>
+  <p class="note" style="margin-top:6px">管理者へ連絡するときは「注文番号（ITO-…）・お客様名・いつ何をしたらどうなったか・画面のスクリーンショット（住所や電話番号は隠す）」を添えてください。</p>
+  <div class="grid2" style="margin-top:12px">
+    <div class="card"><h4><span class="tag t-seno">妹尾さん</span>　公開までにお願いすること</h4>
+      <ul class="check" style="margin-top:6px">
+        <li>Stripe アカウントの申請（本人確認・口座）</li>
+        <li>Stripe の「チーム」に管理者を招待</li>
+        <li>管理スプレッドシート用の Google アカウントを決める</li>
+        <li>特商法の表記内容（住所・電話・メール）を決める</li>
+        <li>送料・受け取りの条件・営業時間を決める</li>
+        <li>注文通知を受け取るメールアドレスを決める</li>
+        <li>商品の公式資料・画像をドライブにまとめる</li>
+        <li>ドメインを取得する（自動更新オン）</li>
+      </ul></div>
+    <div class="card"><h4><span class="tag t-admin">管理者</span>　公開までにやること</h4>
+      <ul class="check" style="margin-top:6px">
+        <li>GitHub に保存し、Netlify でテスト公開</li>
+        <li>管理スプレッドシートと自動メールの設定</li>
+        <li>ドメインを Netlify に接続（HTTPS 有効化）</li>
+        <li>商品データ・画像の初回登録</li>
+        <li>テスト購入（郵送・受け取り・コンビニ）</li>
+        <li>妹尾さんと操作練習（発送メール・サイト反映）</li>
+        <li>本番キーへの切り替え、QRコードの作成</li>
+      </ul></div>
+  </div>
+  <table style="margin-top:12px">
+    <thead><tr><th>窓口</th><th>連絡先</th></tr></thead>
+    <tbody>
+      <tr><td>サイト・スプレッドシートの不具合</td><td>管理者：【要入力】</td></tr>
+      <tr><td>決済・入金</td><td>Stripe 管理画面の「ヘルプ」</td></tr>
+      <tr><td>会計</td><td>マネーフォワードのサポート／顧問税理士</td></tr>
+    </tbody>
+  </table>
+  <div class="foot"><span>salon ito Online Store — 運用マニュアル</span><span>12</span></div>
+</section>
+
+<script>
+const NS = "http://www.w3.org/2000/svg";
+const C = { ink:"#2C2A28", muted:"#7D7873", line:"#D9D4CE", red:"#B4232C", redSoft:"#FBEFF0", redMid:"#E7B9BD",
+  admin:"#3B4A5A", adminSoft:"#E9EDF1", auto:"#8E8984", autoSoft:"#F1F0EE", both:"#8C5A7A", well:"#F6F5F3" };
+function el(svg, tag, attrs, text){ const e=document.createElementNS(NS,tag); for(const k in attrs) e.setAttribute(k,attrs[k]); if(text!=null) e.textContent=text; svg.appendChild(e); return e; }
+function defs(svg, id, color){ const d=el(svg,"defs",{}); const m=el(d,"marker",{id,viewBox:"0 0 10 10",refX:"9",refY:"5",markerWidth:"7",markerHeight:"7",orient:"auto-start-reverse"}); el(m,"path",{d:"M0 0L10 5L0 10z",fill:color}); }
+function lines(svg, x, y, arr, opt={}){ // centered multi-line text
+  const lh = opt.lh||20, start = y - (arr.length-1)*lh/2;
+  arr.forEach((t,i)=>el(svg,"text",{x, y:start+i*lh+ (opt.size||16)/3, "text-anchor":opt.anchor||"middle", "font-size":(i===0&&opt.firstSize)||opt.size||16, "font-weight": i===0 && opt.bold!==false ? 700 : 400, fill: i===0 ? (opt.color||C.ink) : (opt.sub||C.muted)}, t));
+}
+function rbox(svg, cx, cy, w, h, kind, arr, opt={}){
+  const st = { seno:{f:"#fff",s:C.red,sw:2}, admin:{f:C.adminSoft,s:C.admin,sw:1.4}, auto:{f:C.autoSoft,s:C.auto,sw:1.2,dash:"6 4"}, cust:{f:"#fff",s:C.ink,sw:1.2}, plain:{f:"#fff",s:C.line,sw:1.2}, hi:{f:C.redSoft,s:C.red,sw:2} }[kind];
+  el(svg,"rect",{x:cx-w/2,y:cy-h/2,width:w,height:h,rx:10,fill:st.f,stroke:st.s,"stroke-width":st.sw, ...(st.dash?{"stroke-dasharray":st.dash}:{})});
+  lines(svg, cx, cy, arr, opt);
+}
+function arrow(svg, pts, color=C.ink, mk="a", dash){ el(svg,"path",{d:"M"+pts.map(p=>p.join(" ")).join(" L"),fill:"none",stroke:color,"stroke-width":1.6,"marker-end":`url(#${mk})`, ...(dash?{"stroke-dasharray":dash}:{})}); }
+
+/* ---------- overview ---------- */
+(function(){
+  const s=document.getElementById("overview"); defs(s,"oa",C.ink); defs(s,"or",C.red);
+  // customer
+  rbox(s,110,90,180,84,"cust",["お客様","QRコード → スマホ"]);
+  rbox(s,390,90,220,84,"plain",["オンラインストア","salon-ito.jp（Netlify）"]);
+  rbox(s,680,90,200,84,"auto",["Stripe","決済（自動）"]);
+  rbox(s,890,90,170,84,"plain",["銀行口座","入金（自動）"]);
+  arrow(s,[[200,90],[278,90]],C.ink,"oa"); arrow(s,[[500,90],[578,90]],C.ink,"oa"); arrow(s,[[780,90],[803,90]],C.ink,"oa");
+  // auto record
+  rbox(s,670,250,240,84,"auto",["注文を記録＋メール送信","決済完了のときだけ（自動）"]);
+  arrow(s,[[670,132],[670,206]],C.ink,"oa");
+  // spreadsheet hub
+  el(s,"rect",{x:250,y:330,width:500,height:200,rx:14,fill:C.redSoft,stroke:C.red,"stroke-width":2});
+  el(s,"text",{x:500,y:362,"text-anchor":"middle","font-size":19,"font-weight":700,fill:C.ink},"管理スプレッドシート");
+  el(s,"text",{x:500,y:386,"text-anchor":"middle","font-size":14,fill:C.red},"妹尾さんが使うのはここ");
+  const tabs=[["商品","追加・価格・売り切れ"],["お知らせ","トップに表示"],["注文一覧","自動で1行ずつ追加"],["月別集計","売上・販売数"]];
+  tabs.forEach((t,i)=>{ const x=275+i*118; el(s,"rect",{x,y:405,width:106,height:100,rx:8,fill:"#fff",stroke:C.redMid}); lines(s,x+53,455,[t[0],...t[1].match(/.{1,6}/g)],{size:13,firstSize:15,lh:19}); });
+  arrow(s,[[670,292],[670,312],[620,312],[620,328]],C.red,"or");
+  // mail
+  rbox(s,905,250,150,84,"plain",["メール","お客様＋サロン"]);
+  arrow(s,[[790,250],[828,250]],C.ink,"oa");
+  // publish back to site
+  arrow(s,[[300,330],[300,250],[390,250],[390,134]],C.red,"or");
+  el(s,"text",{x:308,y:300,"font-size":14,fill:C.red},"「サイトに反映する」");
+  // admin
+  rbox(s,110,330,180,90,"admin",["管理者","GitHub＋Netlify"]);
+  arrow(s,[[110,284],[110,200],[300,200],[300,134]],C.admin,"oa","5 4");
+  el(s,"text",{x:122,y:192,"font-size":13,fill:C.admin},"デザイン変更・不具合対応");
+})();
+
+/* ---------- gantt ---------- */
+(function(){
+  const s=document.getElementById("gantt"); defs(s,"ga",C.ink);
+  const d0=new Date("2026-11-09T00:00:00Z"), days=31, L=360, R=1480, top=70, rowH=38;
+  const X = iso => L + (Date.parse(iso+"T00:00:00Z")-d0)/864e5*(R-L)/days;
+  const dw=(R-L)/days;
+  const rows=[
+    ["準備","",null],
+    ["Stripe アカウント申請・本人確認","seno","2026-11-10","2026-11-11"],
+    ["Google スプレッドシートの準備・共有","seno","2026-11-10","2026-11-10"],
+    ["特商法の表記・送料・受け取り条件を決める","seno","2026-11-10","2026-11-13"],
+    ["ドメイン取得","seno","2026-11-10","2026-11-11"],
+    ["GitHub 保存・Netlify でテスト公開","admin","2026-11-10","2026-11-11"],
+    ["スプレッドシート・自動メールの設定","admin","2026-11-12","2026-11-13"],
+    ["ドメインをサイトに接続（反映に最大1〜2日）","admin","2026-11-12","2026-11-13"],
+    ["Stripe 本番審査（数日）","ext","2026-11-12","2026-11-18"],
+    ["商品登録・テスト","",null],
+    ["商品の公式資料・画像をそろえる","seno","2026-11-11","2026-11-18"],
+    ["商品データ登録・画像の反映","both","2026-11-17","2026-11-20"],
+    ["テスト購入（郵送・受け取り・コンビニ）","admin","2026-11-18","2026-11-19"],
+    ["操作練習（発送メール・サイト反映）","both","2026-11-20","2026-11-20"],
+    ["公開","",null],
+    ["本番キーに切り替え・最終確認","admin","2026-11-24","2026-11-24"],
+    ["公開・QRコード設置","ms","2026-11-25","2026-11-25"],
+    ["PayPay 審査・追加（公開後でも可）","ext","2026-11-19","2026-12-09"],
+  ];
+  const H = top + rows.length*rowH + 30; s.setAttribute("viewBox",`0 0 1500 ${H}`);
+  // weekend shading + day ticks
+  for(let i=0;i<days;i++){ const dt=new Date(d0.getTime()+i*864e5), wd=dt.getUTCDay(), x=L+i*dw;
+    if(wd===0||wd===6) el(s,"rect",{x,y:top-8,width:dw,height:rows.length*rowH+8,fill:C.well});
+    if(wd===1){ el(s,"line",{x1:x,x2:x,y1:top-8,y2:top+rows.length*rowH,stroke:C.line});
+      el(s,"text",{x:x+3,y:top-16,"font-size":14,fill:C.muted},`${dt.getUTCMonth()+1}/${dt.getUTCDate()}（月）`); } }
+  el(s,"text",{x:L,y:24,"font-size":15,"font-weight":700,fill:C.ink},"2026年11月 〜 12月");
+  // legend
+  const lg=[["妹尾さん",C.red,C.red],["管理者",C.admin,C.admin],["一緒に",C.both,C.both],["外部の審査",C.autoSoft,C.auto],["公開日",null,C.red]];
+  let lx=760; lg.forEach(([t,f,st])=>{ if(f){ el(s,"rect",{x:lx,y:13,width:26,height:13,rx:6,fill:f,stroke:st,...(t==="外部の審査"?{"stroke-dasharray":"4 3"}:{})}); } else { el(s,"path",{d:`M${lx+13} 11 l8 8 l-8 8 l-8 -8z`,fill:C.red}); } el(s,"text",{x:lx+32,y:25,"font-size":14,fill:C.ink},t); lx+=t.length*15+58; });
+  rows.forEach((r,i)=>{ const y=top+i*rowH+rowH/2;
+    if(!r[2]){ el(s,"text",{x:16,y:y+6,"font-size":15,"font-weight":700,fill:C.red},r[0]); el(s,"line",{x1:16,x2:R,y1:y+13,y2:y+13,stroke:C.line}); return; }
+    el(s,"text",{x:28,y:y+6,"font-size":16,fill:C.ink},r[0]);
+    const x1=X(r[2]), x2=X(r[3])+dw, k=r[1];
+    if(k==="ms"){ el(s,"path",{d:`M${x1+dw/2} ${y-12} l12 12 l-12 12 l-12 -12z`,fill:C.red});
+      el(s,"line",{x1:x1+dw/2,x2:x1+dw/2,y1:top-8,y2:top+rows.length*rowH,stroke:C.red,"stroke-dasharray":"5 4"});
+      el(s,"text",{x:x1+dw/2+18,y:y+5,"font-size":15,"font-weight":700,fill:C.red},"11/25 公開目標"); return; }
+    const st={seno:[C.red,C.red],admin:[C.admin,C.admin],both:[C.both,C.both],ext:[C.autoSoft,C.auto]}[k];
+    el(s,"rect",{x:x1+2,y:y-11,width:x2-x1-4,height:22,rx:11,fill:st[0],stroke:st[1],...(k==="ext"?{"stroke-dasharray":"4 3"}:{})});
+  });
+})();
+
+/* ---------- swimlane flow ---------- */
+(function(){
+  const s=document.getElementById("flow"); defs(s,"fa",C.ink); defs(s,"fr",C.red); defs(s,"fm",C.admin);
+  const lanes=[["お客様",20,140,"#FFFFFF"],["自動",156,276,C.autoSoft],["妹尾さん",292,532,C.redSoft],["管理者",548,668,C.adminSoft]];
+  lanes.forEach(([t,y0,y1,f])=>{ el(s,"rect",{x:0,y:y0,width:1640,height:y1-y0,fill:f,stroke:C.line});
+    el(s,"rect",{x:0,y:y0,width:92,height:y1-y0,fill:t==="妹尾さん"?C.red:t==="管理者"?C.admin:t==="自動"?C.auto:C.ink});
+    el(s,"text",{x:46,y:(y0+y1)/2+7,"text-anchor":"middle","font-size":19,"font-weight":700,fill:"#fff"},t); });
+  const col=i=>185+(i-1)*150, W=140, H=72;
+  const Y={cust:80,auto:216,ship:352,pick:472,adm:608};
+  const B=(c,r,k,arr)=>rbox(s,col(c),Y[r],W,H,k,arr,{size:13.5,firstSize:15,lh:19});
+  B(1,"cust","cust",["商品を選び","カートに入れる"]);
+  B(2,"cust","cust",["受け取り方法","を選ぶ","郵送／受け取り"]);
+  B(3,"cust","hi",["決済ボタンを","押して支払う"]);
+  B(4,"auto","auto",["決済を確認","コンビニは入金後"]);
+  B(5,"auto","auto",["シートに記録","注文メール2通"]);
+  B(5,"cust","cust",["注文確認","メールが届く"]);
+  rbox(s,col(5),412,W,H,"seno",["注文メール","を確認"],{size:13.5,firstSize:15,lh:19});
+  // decision
+  const dx=col(6), dy=412; el(s,"path",{d:`M${dx-62} ${dy} L${dx} ${dy-50} L${dx+62} ${dy} L${dx} ${dy+50}z`,fill:"#fff",stroke:C.red,"stroke-width":2});
+  lines(s,dx,dy,["受け取り","方法は？"],{size:14,firstSize:14,lh:18});
+  B(7,"ship","seno",["梱包して","発送する"]);
+  B(8,"ship","seno",["メニュー","「発送済み」","追跡番号を入力"]);
+  B(8,"auto","auto",["発送完了","メールを送信"]);
+  B(8,"cust","cust",["商品が届く"]);
+  B(7,"pick","seno",["商品を用意","取り置き"]);
+  B(8,"pick","seno",["メニュー","「ご用意完了」"]);
+  B(9,"auto","auto",["ご用意できました","メールを送信"]);
+  B(9,"cust","cust",["サロンに来店","注文番号を伝える"]);
+  B(10,"pick","seno",["お渡し","メニュー","「受け渡し済み」"]);
+  rbox(s,(col(3)+col(6))/2,Y.adm,560,64,"admin",["困ったときの相談先","返金・不具合・設定変更・商品登録の手伝い"],{size:13.5,firstSize:15,lh:20});
+  rbox(s,(col(8)+col(10))/2,Y.adm,400,64,"admin",["月1回の確認をサポート","売上・入金・会計の見方"],{size:13.5,firstSize:15,lh:20});
+  const h=W/2, v=H/2;
+  // arrows
+  arrow(s,[[col(1)+h,Y.cust],[col(2)-h,Y.cust]],C.ink,"fa");
+  arrow(s,[[col(2)+h,Y.cust],[col(3)-h,Y.cust]],C.ink,"fa");
+  arrow(s,[[col(3),Y.cust+v],[col(3),Y.auto],[col(4)-h,Y.auto]],C.ink,"fa");
+  arrow(s,[[col(4)+h,Y.auto],[col(5)-h,Y.auto]],C.ink,"fa");
+  arrow(s,[[col(5),Y.auto-v],[col(5),Y.cust+v]],C.ink,"fa");
+  arrow(s,[[col(5),Y.auto+v],[col(5),412-v]],C.red,"fr");
+  arrow(s,[[col(5)+h,412],[dx-62,412]],C.red,"fr");
+  arrow(s,[[dx,dy-50],[dx,Y.ship],[col(7)-h,Y.ship]],C.red,"fr");
+  el(s,"text",{x:dx+10,y:Y.ship-10,"font-size":15,"font-weight":700,fill:C.red},"郵送");
+  arrow(s,[[dx,dy+50],[dx,Y.pick],[col(7)-h,Y.pick]],C.red,"fr");
+  el(s,"text",{x:dx-8,y:Y.pick+26,"text-anchor":"end","font-size":15,"font-weight":700,fill:C.red},"サロンで受け取り");
+  arrow(s,[[col(7)+h,Y.ship],[col(8)-h,Y.ship]],C.red,"fr");
+  arrow(s,[[col(8),Y.ship-v],[col(8),Y.auto+v]],C.ink,"fa");
+  arrow(s,[[col(8),Y.auto-v],[col(8),Y.cust+v]],C.ink,"fa");
+  arrow(s,[[col(7)+h,Y.pick],[col(8)-h,Y.pick]],C.red,"fr");
+  arrow(s,[[col(8)+h,Y.pick],[col(9),Y.pick],[col(9),Y.auto+v]],C.ink,"fa");
+  arrow(s,[[col(9),Y.auto-v],[col(9),Y.cust+v]],C.ink,"fa");
+  arrow(s,[[col(9)+h,Y.cust],[col(10),Y.cust],[col(10),Y.pick-v-2]],C.ink,"fa");
+  arrow(s,[[col(5)-h,412],[col(4),412],[col(4),Y.adm-32]],C.admin,"fm","5 4");
+  el(s,"text",{x:col(4)-8,y:500,"text-anchor":"end","font-size":13,fill:C.admin},"困ったら相談");
+})();
+
+/* ---------- menu mock ---------- */
+(function(){
+  const s=document.getElementById("menu"); defs(s,"ma",C.red);
+  el(s,"rect",{x:10,y:10,width:560,height:230,rx:8,fill:"#fff",stroke:C.line});
+  el(s,"rect",{x:10,y:10,width:560,height:34,rx:8,fill:C.well});
+  ["ファイル","編集","表示","挿入","拡張機能","salon ito"].forEach((t,i)=>el(s,"text",{x:28+i*82,y:33,"font-size":14,"font-weight":t==="salon ito"?700:400,fill:t==="salon ito"?C.red:C.ink},t));
+  el(s,"rect",{x:430,y:44,width:420,height:176,rx:6,fill:"#fff",stroke:C.ink,"stroke-width":1.2});
+  const items=["サイトに反映する（商品・お知らせ）","商品データをチェックする","選択中の注文を「発送済み／ご用意完了」にしてメールを送る","選択中の注文を「受け渡し済み」にする（サロンで受け取り）","テスト注文を1件記録する"];
+  items.forEach((t,i)=>{ const y=72+i*32; if(i===2){ el(s,"rect",{x:432,y:y-20,width:416,height:30,fill:C.redSoft}); }
+    el(s,"text",{x:446,y,"font-size":13,"font-weight":i===2?700:400,fill:i===2?C.red:C.ink},t.length>27?t.slice(0,27)+"…":t); });
+  el(s,"text",{x:30,y:80,"font-size":14,fill:C.ink},"注文一覧シート");
+  for(let r=0;r<4;r++){ el(s,"rect",{x:30,y:94+r*30,width:380,height:30,fill:r===2?C.redSoft:"#fff",stroke:C.line}); }
+  el(s,"text",{x:40,y:174,"font-size":13,fill:C.red,"font-weight":700},"← 発送した注文の行をクリック");
+  el(s,"text",{x:880,y:140,"font-size":14,fill:C.ink},"① 行を選ぶ");
+  el(s,"text",{x:880,y:164,"font-size":14,fill:C.ink},"② メニューを押す");
+  el(s,"text",{x:880,y:188,"font-size":14,fill:C.ink},"③ メールが届く");
+})();
+
+/* ---------- publish flow ---------- */
+(function(){
+  const s=document.getElementById("publish"); defs(s,"pa",C.red);
+  const xs=[110,350,600,860];
+  rbox(s,xs[0],95,190,90,"seno",["「商品」シート","を編集"]);
+  rbox(s,xs[1],95,200,90,"hi",["メニュー","「サイトに反映する」"]);
+  rbox(s,xs[2],95,210,90,"auto",["自動でチェック","→ サイトを作り直す"]);
+  rbox(s,xs[3],95,200,90,"cust",["サイトが更新","スマホは再読み込み"]);
+  arrow(s,[[205,95],[248,95]],C.red,"pa"); arrow(s,[[450,95],[493,95]],C.red,"pa"); arrow(s,[[705,95],[758,95]],C.red,"pa");
+  el(s,"text",{x:730,y:170,"text-anchor":"middle","font-size":14,fill:C.muted},"2〜3分");
+  el(s,"text",{x:600,y:170,"text-anchor":"middle","font-size":13,fill:C.red},"入力ミスがあれば止まり、直す場所を表示");
+})();
+
+/* ---------- github ---------- */
+(function(){
+  const s=document.getElementById("github"); defs(s,"ha",C.ink); defs(s,"hm",C.admin);
+  rbox(s,130,150,200,110,"admin",["管理者","デザイン・しくみを変更"]);
+  // repository as shelf with history
+  el(s,"rect",{x:300,y:40,width:340,height:220,rx:12,fill:"#fff",stroke:C.ink,"stroke-width":1.4});
+  el(s,"text",{x:470,y:72,"text-anchor":"middle","font-size":18,"font-weight":700,fill:C.ink},"GitHub（設計図の棚・非公開）");
+  const hist=[["11/09","初期構築"],["11/09","スプレッドシートで運用"],["11/09","サロンで受け取りを追加"],["次回","…"]];
+  hist.forEach(([d,t],i)=>{ const y=100+i*38; el(s,"circle",{cx:340,cy:y,r:7,fill:i<3?C.red:"#fff",stroke:C.red}); if(i<3) el(s,"line",{x1:340,x2:340,y1:y+7,y2:y+31,stroke:C.red});
+    el(s,"text",{x:360,y:y+5,"font-size":14,fill:C.muted},d); el(s,"text",{x:410,y:y+5,"font-size":14,fill:C.ink},t); });
+  rbox(s,800,150,190,110,"auto",["Netlify","自動で公開"]);
+  arrow(s,[[230,150],[296,150]],C.admin,"hm");
+  el(s,"text",{x:263,y:140,"text-anchor":"middle","font-size":13,fill:C.admin},"保存");
+  arrow(s,[[640,150],[703,150]],C.ink,"ha");
+  el(s,"text",{x:672,y:140,"text-anchor":"middle","font-size":13,fill:C.muted},"数分");
+  el(s,"text",{x:800,y:240,"text-anchor":"middle","font-size":14,fill:C.ink},"→ お客様のスマホに表示");
+  el(s,"text",{x:470,y:290,"text-anchor":"middle","font-size":13,fill:C.red},"● = 変更1回ごとの記録（コミット）。いつでも前の状態に戻せる");
+})();
+
+/* ---------- phases ---------- */
+(function(){
+  const s=document.getElementById("phases");
+  const ph=[["立ち上げ期","公開〜1か月",250],["並走期","2〜3か月目",495],["自走期","4か月目〜",740]];
+  ph.forEach(([t,d,x],i)=>{ const w=240; el(s,"path",{d:`M${x} 20 H${x+w-20} L${x+w} 55 L${x+w-20} 90 H${x} ${i?`L${x+20} 55 Z`:"Z"}`,fill:i===0?C.admin:i===1?C.both:C.red});
+    el(s,"text",{x:x+w/2,y:52,"text-anchor":"middle","font-size":19,"font-weight":700,fill:"#fff"},t);
+    el(s,"text",{x:x+w/2,y:76,"text-anchor":"middle","font-size":13,fill:"#fff"},d); });
+  const tasks=[["注文対応","（発送・受け取り）"],["商品・価格・","お知らせの更新"],["売上・入金の確認",""],["返金・お客様対応",""],["デザイン変更・","不具合対応"]];
+  const who=[[[1,2],[2,1],[2,0]],[[0,2],[1,2],[2,0]],[[0,2],[1,1],[2,0]],[[1,2],[2,1],[2,0]],[[0,2],[0,2],[0,2]]];
+  el(s,"text",{x:10,y:130,"font-size":14,fill:C.muted},"担当の度合い　● 主に担当　◐ 一緒に　○ 相談にのる・見守る");
+  tasks.forEach(([a,b],r)=>{ const y=175+r*58; el(s,"line",{x1:10,x2:990,y1:y+30,y2:y+30,stroke:C.line});
+    el(s,"text",{x:10,y:b?y-2:y+6,"font-size":15,"font-weight":700,fill:C.ink},a);
+    if(b) el(s,"text",{x:10,y:y+17,"font-size":13,fill:C.ink},b);
+    ph.forEach((p,i)=>{ const [sv,av]=who[r][i]; const x=p[2]+40;
+      const mark=(cx,lv,col,label)=>{ el(s,"circle",{cx,cy:y,r:9,fill:lv===2?col:"#fff",stroke:col,"stroke-width":1.6}); if(lv===1) el(s,"path",{d:`M${cx} ${y-9} A9 9 0 0 1 ${cx} ${y+9}Z`,fill:col}); el(s,"text",{x:cx+15,y:y+5,"font-size":13,fill:col},label); };
+      mark(x,sv,C.red,"妹尾さん"); mark(x+100,av,C.admin,"管理者"); }); });
+  el(s,"rect",{x:10,y:470,width:980,height:76,rx:10,fill:C.adminSoft,stroke:C.admin,"stroke-dasharray":"6 4"});
+  el(s,"text",{x:30,y:500,"font-size":15,"font-weight":700,fill:C.admin},"もう一つの選択肢：管理者がそのまま運用を続ける");
+  el(s,"text",{x:30,y:526,"font-size":13.5,fill:C.ink},"並走期以降も、注文対応以外（商品更新・売上確認・不具合対応）を管理者が受け持つ形。妹尾さんは発送と接客に集中できます。");
+})();
+
+/* ---------- money ---------- */
+(function(){
+  const s=document.getElementById("money"); defs(s,"ya",C.ink);
+  const st=[["お客様が支払う","¥11,000","cust"],["Stripe が手数料を差し引く","−¥396（カード3.6%）","auto"],["妹尾さんの口座に入金","¥10,604","seno"],["マネーフォワードに明細","売上・手数料・入金","admin"]];
+  st.forEach(([a,b,k],i)=>{ const x=125+i*250; rbox(s,x,110,210,110,k,[a,b],{size:15,firstSize:15,lh:30});
+    if(i<3) arrow(s,[[x+105,110],[x+143,110]],C.ink,"ya"); });
+  el(s,"text",{x:500,y:220,"text-anchor":"middle","font-size":14,fill:C.muted},"例：¥11,000 のご注文をカードで支払った場合（送料無料ライン）。入金の頻度は Stripe の「残高」画面で確認・変更できます。");
+  el(s,"text",{x:500,y:250,"text-anchor":"middle","font-size":14,fill:C.muted},"PayPay・コンビニ払いの手数料率は、申し込み時に Stripe の料金ページで確認します。");
+})();
+
+/* ---------- domain ---------- */
+(function(){
+  const s=document.getElementById("domain"); defs(s,"da",C.ink);
+  const st=[["空きを検索","取得サービスで","seno"],["取得・支払い","妹尾さん名義","seno"],["Netlify に接続","DNSの設定（管理者）","admin"],["反映を待つ","最大1〜2日","auto"],["https で公開","QRコードを作成","hi"]];
+  st.forEach(([a,b,k],i)=>{ const x=95+i*202; rbox(s,x,90,170,86,k,[a,b],{size:13.5,firstSize:15,lh:22}); if(i<4) arrow(s,[[x+85,90],[x+115,90]],C.ink,"da"); });
+})();
+</script>
+</body>
+</html>
