@@ -43,10 +43,14 @@
   let history = load("ito-orders", []);
   let demoOrders = DEMO ? load("ito-demo-orders", null) : null;
   let filter = "すべて", detailQty = 1, mpTab = "orders", lastOrder = null;
+  let fulfillment = load("ito-fulfillment", "ship"); // "ship"（郵送） | "pickup"（サロンで受け取り）
+  const PICKUP = !!SHOP.pickup?.enabled;
+  if (!PICKUP) fulfillment = "ship";
+  const FUL_LABEL = { ship: "郵送", pickup: "サロンで受け取り" };
 
-  function totals(items) {
+  function totals(items, ful = fulfillment) {
     const subtotal = items.reduce((s, i) => s + P(i.id).price * i.q, 0);
-    const shipping = subtotal === 0 || subtotal >= SHOP.freeShippingOver ? 0 : SHOP.shippingFee;
+    const shipping = ful === "pickup" || subtotal === 0 || subtotal >= SHOP.freeShippingOver ? 0 : SHOP.shippingFee;
     return { subtotal, shipping, total: subtotal + shipping };
   }
   function setCart(next) { cart = next; save("ito-cart", cart); badge(); }
@@ -197,9 +201,9 @@
     const t = totals(items), rest = SHOP.freeShippingOver - t.subtotal;
     return `<div class="sum">
       <span>小計</span><span class="v">${yen(t.subtotal)}</span>
-      <span>送料</span><span class="v">${t.shipping ? yen(t.shipping) : "無料"}</span>
+      <span>${fulfillment === "pickup" ? "受け取り" : "送料"}</span><span class="v">${fulfillment === "pickup" ? "サロンで受け取り（無料）" : t.shipping ? yen(t.shipping) : "無料"}</span>
       <span class="t">合計（税込）</span><span class="t v">${yen(t.total)}</span>
-      ${t.subtotal > 0 && rest > 0 ? `<span class="note">あと${yen(rest)}で送料無料になります</span>` : ""}
+      ${fulfillment !== "pickup" && t.subtotal > 0 && rest > 0 ? `<span class="note">あと${yen(rest)}で送料無料になります</span>` : ""}
     </div>`;
   }
 
@@ -243,35 +247,47 @@
       <div class="two">
         <div class="box"><h3>ご注文商品</h3>
           ${cart.map(i => { const p = P(i.id); return `<div class="sum" style="margin-bottom:8px"><span>${esc(p.name)}${p.volume ? `（${esc(p.volume)}）` : ""} × ${i.q}</span><span class="v">${yen(p.price * i.q)}</span></div>`; }).join("")}
-          <div style="margin-top:18px">${sumBlock(cart)}</div>
+          ${PICKUP ? `<h3 style="margin-top:32px">受け取り方法</h3>
+          <div class="ful" role="radiogroup" aria-label="受け取り方法">
+            <label><input type="radio" name="ful" id="ful-ship" value="ship" ${fulfillment === "ship" ? "checked" : ""}><span><b>郵送でお届け</b><small>送料 ${yen(SHOP.shippingFee)}（${yen(SHOP.freeShippingOver)}以上で無料）</small></span></label>
+            <label><input type="radio" name="ful" id="ful-pickup" value="pickup" ${fulfillment === "pickup" ? "checked" : ""}><span><b>サロンで受け取り</b><small>送料無料｜${esc(SHOP.pickup.note)}</small></span></label>
+          </div>` : ""}
+          <div style="margin-top:18px" id="sumbox">${sumBlock(cart)}</div>
           <h3 style="margin-top:36px">ご利用いただけるお支払い方法</h3>
           <ul class="paylist">${PAYMENTS.map(m => `<li><i></i><span><b>${m.label}</b><small>${m.sub}</small></span></li>`).join("")}</ul>
         </div>
         <div class="box"><h3>ご確認ください</h3>
           <dl class="final">
             <dt>お支払い時期</dt><dd>カード・Apple Pay・Google Pay・PayPayはご注文時。コンビニ払いはご注文から3日以内。</dd>
-            <dt>お届け時期</dt><dd>${esc(SHOP.deliveryNote)}</dd>
+            <dt id="ful-dt">${fulfillment === "pickup" ? "お受け取り" : "お届け時期"}</dt><dd id="ful-dd">${esc(fulfillment === "pickup" ? SHOP.pickup.note : SHOP.deliveryNote)}</dd>
             <dt>返品・キャンセル</dt><dd>お客様都合による返品はお受けしていません。不良品・誤配送の場合は到着後7日以内にご連絡ください。詳しくは<a href="#tokushoho">特定商取引法に基づく表記</a>をご覧ください。</dd>
           </dl>
           <label class="agree"><input type="checkbox" id="agree"><span><a href="#guide">ご利用ガイド</a>・<a href="#tokushoho">特定商取引法に基づく表記</a>・<a href="#privacy">プライバシーポリシー</a>に同意します</span></label>
-          <button class="btn red block" id="go" disabled>お支払いへ進む（${yen(t.total)}）</button>
+          <button class="btn red block" id="go" disabled>お支払いへ進む（<span id="go-total">${yen(t.total)}</span>）</button>
           <p class="err" id="err" hidden></p>
           <p class="small-note">次の画面で、お届け先とお支払い方法を入力します。決済は Stripe の安全な画面で行われ、カード情報は当店に保存されません。</p>
         </div>
       </div></div>`;
     const agree = document.getElementById("agree"), go = document.getElementById("go"), err = document.getElementById("err");
     agree.onchange = () => (go.disabled = !agree.checked);
+    app.querySelectorAll("[name=ful]").forEach(r => (r.onchange = () => {
+      fulfillment = r.value; save("ito-fulfillment", fulfillment);
+      document.getElementById("sumbox").innerHTML = sumBlock(cart);
+      document.getElementById("go-total").textContent = yen(totals(cart).total);
+      document.getElementById("ful-dt").textContent = fulfillment === "pickup" ? "お受け取り" : "お届け時期";
+      document.getElementById("ful-dd").textContent = fulfillment === "pickup" ? SHOP.pickup.note : SHOP.deliveryNote;
+    }));
     go.onclick = async () => {
       if (DEMO) { location.hash = "pay-demo"; return; }
       go.disabled = true; go.textContent = "決済画面へ移動しています…"; err.hidden = true;
       try {
-        const r = await fetch("api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: cart }) });
+        const r = await fetch("api/checkout", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ items: cart, fulfillment }) });
         const d = await r.json();
         if (!r.ok || !d.url) throw new Error(d.error || "決済画面を開けませんでした");
         location.href = d.url;
       } catch (e) {
         err.textContent = e.message + "。時間をおいてもう一度お試しください。"; err.hidden = false;
-        go.disabled = false; go.textContent = `お支払いへ進む（${yen(t.total)}）`;
+        go.disabled = false; go.innerHTML = `お支払いへ進む（<span id="go-total">${yen(totals(cart).total)}</span>）`;
       }
     };
   }
@@ -290,8 +306,8 @@
             <label class="f">お名前<input id="d-name" value="山田 花子" required></label>
             <label class="f">メールアドレス<input id="d-email" type="email" value="hanako@example.com" required></label>
             <label class="f">電話番号<input id="d-tel" value="090-0000-0000"></label>
-            <label class="f">郵便番号<input id="d-zip" value="000-0000"></label>
-            <label class="f">住所<input id="d-addr" value="○○県○○市○○ 1-2-3"></label>
+            ${fulfillment === "pickup" ? "" : `<label class="f">郵便番号<input id="d-zip" value="000-0000"></label>
+            <label class="f">住所<input id="d-addr" value="○○県○○市○○ 1-2-3"></label>`}
           </div>
           <h3 style="margin-top:32px">お支払い方法</h3>
           <ul class="paylist">${PAYMENTS.map((m, i) => `<li><input type="radio" name="pm" id="pm-${m.key}" value="${m.key}" ${i ? "" : "checked"} style="accent-color:var(--red)"><label for="pm-${m.key}"><b>${m.label}</b><small>${m.sub}</small></label></li>`).join("")}</ul>
@@ -301,7 +317,7 @@
       </div></div>`;
     document.getElementById("pf").onsubmit = e => {
       e.preventDefault();
-      const v = id => document.getElementById(id).value.trim();
+      const v = id => document.getElementById(id)?.value.trim() || "";
       const pm = document.querySelector("[name=pm]:checked").value;
       const now = new Date(), pad = n => String(n).padStart(2, "0");
       const order = {
@@ -310,6 +326,7 @@
         customer: { name: v("d-name"), email: v("d-email"), phone: v("d-tel"), postal: v("d-zip"), address: v("d-addr") },
         items: cart.map(i => { const p = P(i.id); return { id: p.id, name: p.name, volume: p.volume, price: p.price, qty: i.q }; }),
         ...totals(cart),
+        fulfillment,
         paymentType: pm, paymentMethod: PAYMENTS.find(m => m.key === pm).label,
         status: pm === "konbini" ? "unpaid" : "paid",
       };
@@ -329,12 +346,16 @@
   const fmtDate = iso => { const d = new Date(iso), p = n => String(n).padStart(2, "0"); return `${d.getFullYear()}/${p(d.getMonth() + 1)}/${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`; };
   // GAS（gas/Code.gs）のメール本文と同じ構成
   function mailTexts(o) {
+    const pickup = o.fulfillment === "pickup";
     const lines = o.items.map(i => `・${i.name}${i.volume ? `（${i.volume}）` : ""} × ${i.qty}　${yen(i.price * i.qty)}`).join("\n");
-    const money = `小計　${yen(o.subtotal)}\n送料　${o.shipping ? yen(o.shipping) : "無料"}\n合計　${yen(o.total)}（税込）`;
-    const pay = o.status === "unpaid" ? "\n※コンビニ払いのお客様は、別途届くメールの払込番号で3日以内にお支払いください。お支払い確認後に発送します。\n" : "";
+    const money = `小計　${yen(o.subtotal)}\n${pickup ? "受け取り　サロンで受け取り（無料）" : `送料　${o.shipping ? yen(o.shipping) : "無料"}`}\n合計　${yen(o.total)}（税込）`;
+    const pay = o.status === "unpaid" ? `\n※コンビニ払いのお客様は、別途届くメールの払込番号で3日以内にお支払いください。お支払い確認後に${pickup ? "ご用意" : "発送"}します。\n` : "";
+    const where = pickup
+      ? `■ 受け取り方法\nサロンで受け取り\n${SHOP.pickup?.note || ""}`
+      : `■ お届け先\n〒${o.customer.postal}　${o.customer.address}\n${o.customer.name} 様\n\n${SHOP.deliveryNote}`;
     return {
-      customer: `${o.customer.name} 様\n\nこのたびは salon ito オンラインストアをご利用いただき、誠にありがとうございます。\n以下の内容でご注文を承りました。\n\n■ 注文番号　${o.orderNo}\n■ ご注文日時　${fmtDate(o.createdAt)}\n■ お支払い方法　${o.paymentMethod}\n\n${lines}\n\n${money}\n${pay}\n■ お届け先\n〒${o.customer.postal}　${o.customer.address}\n${o.customer.name} 様\n\n${SHOP.deliveryNote}\nご不明な点は、このメールにご返信ください。\n\nsalon ito`,
-      salon: `新しいご注文が入りました。\n\n注文番号：${o.orderNo}\n日時：${fmtDate(o.createdAt)}\nお客様：${o.customer.name}（${o.customer.email}）\n電話：${o.customer.phone || "-"}\nお届け先：〒${o.customer.postal} ${o.customer.address}\n支払い：${o.paymentMethod}${o.status === "unpaid" ? "（入金待ち）" : ""}\n\n${lines}\n\n${money}\n\nスプレッドシート「注文一覧」に記録済みです。`,
+      customer: `${o.customer.name} 様\n\nこのたびは salon ito オンラインストアをご利用いただき、誠にありがとうございます。\n以下の内容でご注文を承りました。\n\n■ 注文番号　${o.orderNo}\n■ ご注文日時　${fmtDate(o.createdAt)}\n■ お支払い方法　${o.paymentMethod}\n\n${lines}\n\n${money}\n${pay}\n${where}\nご不明な点は、このメールにご返信ください。\n\nsalon ito`,
+      salon: `新しいご注文が入りました。\n\n注文番号：${o.orderNo}\n日時：${fmtDate(o.createdAt)}\nお客様：${o.customer.name}（${o.customer.email}）\n電話：${o.customer.phone || "-"}\n受け取り：${pickup ? "【サロンで受け取り】" : `郵送　〒${o.customer.postal} ${o.customer.address}`}\n支払い：${o.paymentMethod}${o.status === "unpaid" ? "（入金待ち）" : ""}\n\n${lines}\n\n${money}\n\nスプレッドシート「注文一覧」に記録済みです。`,
     };
   }
 
@@ -357,7 +378,7 @@
       <div class="done">${done}
         <h1>ご注文ありがとうございました</h1>
         <p>注文番号　<span class="no">${esc(o.orderNo)}</span></p>
-        <p>${o.status === "unpaid" ? "コンビニでのお支払い確認後に発送いたします。" : "ご注文を承りました。"}確認メールを ${esc(o.customer.email)} にお送りしました。</p>
+        <p>${o.status === "unpaid" ? `コンビニでのお支払い確認後に${o.fulfillment === "pickup" ? "ご用意" : "発送"}いたします。` : o.fulfillment === "pickup" ? "ご用意ができましたらメールでお知らせします。" : "ご注文を承りました。"}確認メールを ${esc(o.customer.email)} にお送りしました。</p>
         <div class="row-btns"><a class="btn" href="#mypage">注文履歴を見る</a><a class="btn line" href="#shop">トップへ戻る</a></div>
       </div>
       ${DEMO ? `<p class="tagline" style="margin:24px 0 12px">送信されるメールのイメージ（デモ）</p>
@@ -376,7 +397,7 @@
           <div class="oh"><span>${fmtDate(o.createdAt)}</span><span class="badge ${o.status === "unpaid" ? "wait" : ""}">${o.status === "unpaid" ? "お支払い待ち" : "ご注文受付済み"}</span></div>
           <span class="no">${esc(o.orderNo)}</span>
           <div style="font-size:13px">${o.items.map(i => `${esc(i.name)} × ${i.qty}`).join("、")}</div>
-          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)"><span>${esc(o.paymentMethod)}</span><span class="price" style="color:var(--ink)">${yen(o.total)}</span></div>
+          <div style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--muted)"><span>${esc(o.paymentMethod)}｜${FUL_LABEL[o.fulfillment || "ship"]}</span><span class="price" style="color:var(--ink)">${yen(o.total)}</span></div>
           <div><button class="ulink" data-again="${esc(o.orderNo)}">同じ商品をもう一度カートに入れる</button></div>
         </div>`).join("") : `<p class="empty">まだご注文はありません。</p>`)
       : (me ? `<dl class="spec" style="border:0;padding:0">
@@ -409,7 +430,7 @@
       ["商品代金以外の必要料金", `送料 ${yen(SHOP.shippingFee)}（${yen(SHOP.freeShippingOver)}以上のご注文で無料）。コンビニ払いの支払手数料は当店が負担します。`],
       ["お支払い方法", PAYMENTS.map(m => m.label).join("、")],
       ["お支払い時期", "クレジットカード・Apple Pay・Google Pay・PayPay：ご注文時にお支払いが確定します。\nコンビニ払い：ご注文から3日以内にお支払いください。期限を過ぎるとご注文は自動的にキャンセルされます。"],
-      ["商品の引渡時期", SHOP.deliveryNote],
+      ["商品の引渡時期", `郵送：${SHOP.deliveryNote}` + (PICKUP ? `\nサロンで受け取り：${SHOP.pickup.note}` : "")],
       ["返品・交換について", "商品の性質上、お客様都合による返品・交換はお受けしておりません。\n商品の破損・不良・誤配送の場合は、商品到着後7日以内にご連絡ください。送料当店負担で交換または返金いたします。"],
       ["申込みの撤回・解除", "ご注文確定後のキャンセルは、発送前に限りご連絡いただいた場合に承ります。"],
     ];
@@ -437,6 +458,7 @@
       <h2>送料</h2><p>全国一律 ${yen(SHOP.shippingFee)}（税込）。${yen(SHOP.freeShippingOver)}（税込）以上のご注文で送料無料です。</p>
       <h2>お支払い方法</h2><ul>${PAYMENTS.map(m => `<li>${m.label}：${m.sub}</li>`).join("")}</ul>
       <h2>お届け</h2><p>${esc(SHOP.deliveryNote)}</p>
+      ${PICKUP ? `<h2>サロンで受け取り</h2><p>ご注文時に「サロンで受け取り」を選ぶと送料はかかりません。${esc(SHOP.pickup.note)}</p>` : ""}
       <h2>返品・交換</h2><p>お客様都合による返品はお受けしておりません。不良品・誤配送の場合は到着後7日以内にご連絡ください。</p>
       <h2>肌に合わない場合</h2><p>ご使用中、またはご使用後に赤み・かゆみ等の異常があらわれた場合は使用を中止し、皮膚科専門医等にご相談ください。</p></div>`;
   }
@@ -460,8 +482,8 @@
         <div class="kpi"><small>平均客単価</small><b>${yen(Math.round(total / Math.max(1, paid.length)))}</b></div>
       </div>
       ${rows.length ? `<div class="sheet-wrap"><table class="sheet">
-        <thead><tr><th class="rn"></th><th>注文日時</th><th>注文番号</th><th>購入者</th><th>メール</th><th>商品ID</th><th>商品名</th><th>単価</th><th>数量</th><th>小計</th><th>送料</th><th>注文合計</th><th>支払方法</th><th>入金見込み</th><th>ステータス</th></tr></thead>
-        <tbody>${rows.map((r, ix) => `<tr><td class="rn">${ix + 2}</td><td>${fmtDate(r.o.createdAt)}</td><td>${esc(r.o.orderNo)}</td><td>${esc(r.o.customer.name)}</td><td>${esc(r.o.customer.email)}</td><td>${esc(r.i.id)}</td><td>${esc(r.i.name)}</td><td class="num">${r.i.price.toLocaleString()}</td><td class="num">${r.i.qty}</td><td class="num">${(r.i.price * r.i.qty).toLocaleString()}</td><td class="num">${r.first ? r.o.shipping.toLocaleString() : ""}</td><td class="num">${r.first ? r.o.total.toLocaleString() : ""}</td><td>${esc(r.o.paymentMethod)}</td><td class="num">${r.first ? Math.round(r.o.total * (1 - (RATE[r.o.paymentType] || .036))).toLocaleString() : ""}</td><td>${r.o.status === "paid" ? "決済完了" : "入金待ち"}</td></tr>`).join("")}</tbody>
+        <thead><tr><th class="rn"></th><th>注文日時</th><th>注文番号</th><th>購入者</th><th>メール</th><th>商品ID</th><th>商品名</th><th>単価</th><th>数量</th><th>小計</th><th>送料</th><th>注文合計</th><th>支払方法</th><th>入金見込み</th><th>ステータス</th><th>受取方法</th></tr></thead>
+        <tbody>${rows.map((r, ix) => `<tr><td class="rn">${ix + 2}</td><td>${fmtDate(r.o.createdAt)}</td><td>${esc(r.o.orderNo)}</td><td>${esc(r.o.customer.name)}</td><td>${esc(r.o.customer.email)}</td><td>${esc(r.i.id)}</td><td>${esc(r.i.name)}</td><td class="num">${r.i.price.toLocaleString()}</td><td class="num">${r.i.qty}</td><td class="num">${(r.i.price * r.i.qty).toLocaleString()}</td><td class="num">${r.first ? r.o.shipping.toLocaleString() : ""}</td><td class="num">${r.first ? r.o.total.toLocaleString() : ""}</td><td>${esc(r.o.paymentMethod)}</td><td class="num">${r.first ? Math.round(r.o.total * (1 - (RATE[r.o.paymentType] || .036))).toLocaleString() : ""}</td><td>${r.o.status === "paid" ? "決済完了" : "入金待ち"}</td><td>${FUL_LABEL[r.o.fulfillment || "ship"]}</td></tr>`).join("")}</tbody>
       </table></div>` : `<p class="empty">まだ注文がありません。商品をカートに入れて、デモの購入を最後まで進めてみてください。</p>`}
       <p class="small-note">※ コンビニ払いは、入金が確認された時点で記録されます（デモでは「入金待ち」として表示）。　<button class="ulink" id="reset">デモの注文データを消去</button></p>
     </div>`;

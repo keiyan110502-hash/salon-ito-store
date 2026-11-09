@@ -160,6 +160,12 @@ dl.spec dd{margin:0;white-space:pre-wrap;overflow-wrap:anywhere}
 .paylist b{font-weight:400}
 .paylist small{display:block;font-size:11px;color:var(--muted);line-height:1.7}
 .paylist i{font-style:normal;width:6px;height:6px;border-radius:50%;background:var(--red);display:inline-block;transform:translateY(-2px)}
+.ful{display:grid;gap:8px;margin-bottom:8px}
+.ful label{display:grid;grid-template-columns:18px minmax(0,1fr);gap:12px;align-items:start;border:1px solid var(--line);padding:12px 14px;cursor:pointer}
+.ful label:has(input:checked){border-color:var(--red);background:var(--red-soft)}
+.ful input{accent-color:var(--red);margin:4px 0 0}
+.ful b{font-weight:400;font-size:13px;display:block}
+.ful small{display:block;font-size:11px;color:var(--muted);line-height:1.7}
 .final{font-size:12px;margin:0 0 20px;display:grid;grid-template-columns:7.5em minmax(0,1fr);gap:8px 12px}
 .final dt{color:var(--muted)}
 .final dd{margin:0}

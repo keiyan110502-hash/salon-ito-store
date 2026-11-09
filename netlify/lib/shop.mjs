@@ -48,6 +48,7 @@ export function toOrder(session) {
     subtotal: session.amount_subtotal,
     shipping: session.total_details?.amount_shipping || 0,
     total: session.amount_total,
+    fulfillment: session.metadata?.fulfillment === "pickup" ? "pickup" : "ship",
     paymentType: type,
     paymentMethod: PM_LABEL[type] || type,
     status: session.payment_status === "paid" ? "paid" : "unpaid",

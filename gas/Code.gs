@@ -31,8 +31,9 @@ const PRODUCT_HEADERS = ['商品ID', 'ブランド', 'シリーズ', 'カテゴ�
 const PRODUCT_CHECKBOX_COLS = [8, 9, 12, 13]; // 公開・仮データ・医薬部外品・売り切れ
 const NEWS_HEADERS = ['日付', '本文', '公開'];
 const ORDER_HEADERS = ['注文日時', '注文番号', '購入者', 'メール', '電話', '郵便番号', '住所', '商品ID', '商品名', '単価', '数量', '小計',
-  '送料', '注文合計', '支払方法', '決済手数料(見込)', '入金見込み', 'ステータス', 'Stripe Session ID', '発送日', '配送会社・追跡番号'];
-const COL = { orderNo: 2, name: 3, email: 4, status: 18, shippedAt: 20, tracking: 21 };
+  '送料', '注文合計', '支払方法', '決済手数料(見込)', '入金見込み', 'ステータス', 'Stripe Session ID', '発送日・準備完了日', '配送会社・追跡番号', '受取方法'];
+const COL = { orderNo: 2, name: 3, email: 4, status: 18, shippedAt: 20, tracking: 21, fulfillment: 22 };
+const PICKUP_LABEL = 'サロンで受け取り';
 
 /* ───────── メニュー ───────── */
 function onOpen() {
@@ -40,7 +41,8 @@ function onOpen() {
     .addItem('サイトに反映する（商品・お知らせ）', 'publishToSite')
     .addItem('商品データをチェックする', 'checkProductsMenu')
     .addSeparator()
-    .addItem('選択中の注文を「発送済み」にしてメールを送る', 'markShipped')
+    .addItem('選択中の注文を「発送済み／ご用意完了」にしてメールを送る', 'markShipped')
+    .addItem('選択中の注文を「受け渡し済み」にする（サロンで受け取り）', 'markHandedOver')
     .addSeparator()
     .addItem('テスト注文を1件記録する', 'testOrder')
     .addToUi();
@@ -139,6 +141,7 @@ function doPost(e) {
       it.id, it.name, it.price, it.qty, it.price * it.qty,
       i === 0 ? o.shipping : '', i === 0 ? o.total : '', o.paymentMethod,
       i === 0 ? fee : '', i === 0 ? o.total - fee : '', '決済完了', o.sessionId, '', '',
+      o.fulfillment === 'pickup' ? PICKUP_LABEL : '郵送',
     ]);
     sh.getRange(sh.getLastRow() + 1, 1, rows.length, ORDER_HEADERS.length).setValues(rows);
     SpreadsheetApp.flush();
@@ -161,19 +164,23 @@ function sendOrderMails_(o, salonEmail) {
   const d = Utilities.formatDate(new Date(o.createdAt), 'Asia/Tokyo', 'yyyy/MM/dd HH:mm');
   const c = o.customer || {};
   const lines = o.items.map(i => `・${i.name} × ${i.qty}　${yen_(i.price * i.qty)}`).join('\n');
-  const money = `小計　${yen_(o.subtotal)}\n送料　${o.shipping ? yen_(o.shipping) : '無料'}\n合計　${yen_(o.total)}（税込）`;
+  const pickup = o.fulfillment === 'pickup';
+  const money = `小計　${yen_(o.subtotal)}\n${pickup ? '受け取り　サロンで受け取り（無料）' : `送料　${o.shipping ? yen_(o.shipping) : '無料'}`}\n合計　${yen_(o.total)}（税込）`;
+  const where = pickup
+    ? '■ 受け取り方法\nサロンで受け取り\n商品のご用意ができましたら、改めてメールでお知らせします。'
+    : `■ お届け先\n〒${c.postal}　${c.address}\n${c.name} 様\n\n発送の準備が整いましたら、改めてご連絡いたします。`;
   if (c.email) {
     MailApp.sendEmail({
       to: c.email, replyTo: salonEmail || undefined, name: SHOP_NAME,
       subject: `【${SHOP_NAME}】ご注文ありがとうございます（${o.orderNo}）`,
-      body: `${c.name} 様\n\nこのたびは ${SHOP_NAME} オンラインストアをご利用いただき、誠にありがとうございます。\n以下の内容でご注文を承りました。\n\n■ 注文番号　${o.orderNo}\n■ ご注文日時　${d}\n■ お支払い方法　${o.paymentMethod}\n\n${lines}\n\n${money}\n\n■ お届け先\n〒${c.postal}　${c.address}\n${c.name} 様\n\n発送の準備が整いましたら、改めてご連絡いたします。\nご不明な点は、このメールにご返信ください。\n\n${SHOP_NAME}`,
+      body: `${c.name} 様\n\nこのたびは ${SHOP_NAME} オンラインストアをご利用いただき、誠にありがとうございます。\n以下の内容でご注文を承りました。\n\n■ 注文番号　${o.orderNo}\n■ ご注文日時　${d}\n■ お支払い方法　${o.paymentMethod}\n\n${lines}\n\n${money}\n\n${where}\nご不明な点は、このメールにご返信ください。\n\n${SHOP_NAME}`,
     });
   }
   if (salonEmail) {
     MailApp.sendEmail({
       to: salonEmail, name: `${SHOP_NAME} 注文通知`,
       subject: `【新規注文】${c.name} 様　${yen_(o.total)}（${o.orderNo}）`,
-      body: `新しいご注文が入りました（決済完了）。\n\n注文番号：${o.orderNo}\n日時：${d}\nお客様：${c.name}（${c.email}）\n電話：${c.phone || '-'}\nお届け先：〒${c.postal} ${c.address}\n支払い：${o.paymentMethod}\n\n${lines}\n\n${money}\n\n発送したら、スプレッドシートでこの注文の行を選び、メニュー「salon ito > 選択中の注文を「発送済み」にしてメールを送る」を押してください。\n${SpreadsheetApp.getActive().getUrl()}`,
+      body: `新しいご注文が入りました（決済完了）。\n\n注文番号：${o.orderNo}\n日時：${d}\nお客様：${c.name}（${c.email}）\n電話：${c.phone || '-'}\n受け取り：${pickup ? '【サロンで受け取り】' : `郵送　〒${c.postal} ${c.address}`}\n支払い：${o.paymentMethod}\n\n${lines}\n\n${money}\n\n${pickup ? '商品を用意したら' : '発送したら'}、スプレッドシートでこの注文の行を選び、メニュー「salon ito > 選択中の注文を「発送済み／ご用意完了」にしてメールを送る」を押してください。\n${SpreadsheetApp.getActive().getUrl()}`,
     });
   }
 }
@@ -191,6 +198,20 @@ function markShipped() {
   if (sh.getRange(row, COL.status).getValue() === '発送済み' &&
       ui.alert('この注文はすでに「発送済み」です。もう一度メールを送りますか？', ui.ButtonSet.YES_NO) !== ui.Button.YES) return;
   const items = rows.map(r => `・${sh.getRange(r, 9).getValue()} × ${sh.getRange(r, 11).getValue()}`).join('\n');
+  if (sh.getRange(row, COL.fulfillment).getValue() === PICKUP_LABEL) {
+    if (ui.alert(`${orderNo}（${name} 様）`, '「サロンで受け取り」の注文です。お客様に「ご用意ができました」メールを送りますか？', ui.ButtonSet.OK_CANCEL) !== ui.Button.OK) return;
+    rows.forEach(r => { sh.getRange(r, COL.status).setValue('受取待ち'); sh.getRange(r, COL.shippedAt).setValue(new Date()); });
+    if (email) {
+      MailApp.sendEmail({
+        to: email, name: SHOP_NAME,
+        replyTo: PropertiesService.getScriptProperties().getProperty('SALON_EMAIL') || undefined,
+        subject: `【${SHOP_NAME}】商品のご用意ができました（${orderNo}）`,
+        body: `${name} 様\n\n${SHOP_NAME} オンラインストアをご利用いただき、ありがとうございます。\nご注文の商品のご用意ができました。\n\n■ 注文番号　${orderNo}\n${items}\n\nサロンの営業時間内にお越しいただき、注文番号をお伝えください。\nご来店日時のご希望があれば、このメールにご返信ください。\n\n${SHOP_NAME}`,
+      });
+    }
+    SpreadsheetApp.getActive().toast(`${name} 様に「ご用意ができました」メールを送りました。`, SHOP_NAME, 6);
+    return;
+  }
   const p = ui.prompt(`${orderNo}（${name} 様）`, '配送会社と追跡番号を入力してください（例：ヤマト運輸 1234-5678-9012）。\n無い場合は空欄のまま OK を押してください。', ui.ButtonSet.OK_CANCEL);
   if (p.getSelectedButton() !== ui.Button.OK) return;
   const tracking = p.getResponseText().trim();
@@ -209,6 +230,17 @@ function markShipped() {
     });
   }
   SpreadsheetApp.getActive().toast(`${name} 様に発送完了メールを送りました。`, SHOP_NAME, 6);
+}
+
+function markHandedOver() {
+  const ui = SpreadsheetApp.getUi();
+  const sh = SpreadsheetApp.getActiveSheet();
+  if (sh.getName() !== SHEET.orders) { ui.alert('「注文一覧」シートで、お渡しした注文の行を選んでから実行してください。'); return; }
+  const row = sh.getActiveRange().getRow();
+  if (row < 2) { ui.alert('注文の行（2行目以降）を選んでください。'); return; }
+  const orderNo = sh.getRange(row, COL.orderNo).getValue();
+  findOrderRows_(sh, orderNo).forEach(r => sh.getRange(r, COL.status).setValue('受け渡し済み'));
+  SpreadsheetApp.getActive().toast(`${orderNo} を「受け渡し済み」にしました。`, SHOP_NAME, 6);
 }
 
 function out(obj) {

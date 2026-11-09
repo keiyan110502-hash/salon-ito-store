@@ -30,7 +30,8 @@ export default async (req) => {
   }
   if (!line_items.length) return json({ error: "カートが空です" }, 400);
 
-  const shippingFee = subtotal >= SHOP.freeShippingOver ? 0 : SHOP.shippingFee;
+  const pickup = body?.fulfillment === "pickup" && !!SHOP.pickup?.enabled;
+  const shippingFee = pickup || subtotal >= SHOP.freeShippingOver ? 0 : SHOP.shippingFee;
   const origin = process.env.URL || new URL(req.url).origin;
 
   try {
@@ -41,16 +42,20 @@ export default async (req) => {
       // 支払い方法（カード / Apple Pay / Google Pay / PayPay / コンビニ）は Stripe ダッシュボードの
       // 「設定 > 決済手段」で ON/OFF する（コードの変更は不要）
       billing_address_collection: "auto",
-      shipping_address_collection: { allowed_countries: ["JP"] },
+      // 郵送のときだけお届け先を入力してもらう（サロンで受け取りの場合は不要）
+      ...(pickup ? {} : { shipping_address_collection: { allowed_countries: ["JP"] } }),
       phone_number_collection: { enabled: true },
       shipping_options: [{
-        shipping_rate_data: {
-          type: "fixed_amount",
-          display_name: shippingFee ? "通常配送" : "通常配送（送料無料）",
-          fixed_amount: { amount: shippingFee, currency: "jpy" },
-          delivery_estimate: { minimum: { unit: "business_day", value: 2 }, maximum: { unit: "business_day", value: 6 } },
-        },
+        shipping_rate_data: pickup
+          ? { type: "fixed_amount", display_name: "サロンで受け取り（送料無料）", fixed_amount: { amount: 0, currency: "jpy" } }
+          : {
+              type: "fixed_amount",
+              display_name: shippingFee ? "通常配送" : "通常配送（送料無料）",
+              fixed_amount: { amount: shippingFee, currency: "jpy" },
+              delivery_estimate: { minimum: { unit: "business_day", value: 2 }, maximum: { unit: "business_day", value: 6 } },
+            },
       }],
+      metadata: { fulfillment: pickup ? "pickup" : "ship" },
       payment_method_options: { konbini: { expires_after_days: 3 } },
       success_url: `${origin}/?session_id={CHECKOUT_SESSION_ID}#done`,
       cancel_url: `${origin}/#cart`,
