@@ -32,9 +32,11 @@ SERIES = {'ae_rich': 'AE Rich', 'all_enrich': 'All Enrich', 'basic': 'BASIC', 'b
           'kasui': 'KASUI', 'melect': 'MELECT', 'muts-hairtouch': 'muts', 'nicowa': 'nicowa', 'nyu-by-adjuvant': 'nyu',
           'other': 'その他', 'polish': 'Polish', 'prinshell': 'PRINSHELL', 'q_and_n': 'Q&N for Homme', 'rafuna': 'rafuna',
           're': 'Re:>>> & Class S', 'touqu-to-tone': 'TOUQU to tone', 'balinese_oil': 'Balinese Oil', 'beauty_lusso2': 'Beauty Lusso'}
+# 業務用・プロ向けのブランドページ（店販しない）
+EXCLUDE = {'jalire', 're_pro', 'other_pro', 're_natural_color', 're_matural_color', 'loop_sheerd_color', 'micro_scope', 'all_enlich'}
 adj = json.load(open(sys.argv[2]))
 for p in adj:
-    if not p['variants'] or p['brandPage'] not in SERIES: continue
+    if not p['variants'] or p['brandPage'] in EXCLUDE: continue
     title = re.sub(r'\s+', ' ', p['title']).strip()
     if title in seen: continue          # 複数ブランドページに載っている共通品（ブラシ・カートリッジ）
     seen.add(title)
@@ -58,7 +60,7 @@ for p in adj:
     quasi = '医薬部外品' in p['category']
     for k, v in enumerate(p['variants']):
         vol = re.sub(r'\s*各\s*$', '', re.sub(r'\s+', ' ', v['volume'])).strip(' /')
-        rows.append([f'{gid}-{k + 1}' if len(p['variants']) > 1 else gid, gid, 'ADJUVANT', SERIES[p['brandPage']], cat,
+        rows.append([f'{gid}-{k + 1}' if len(p['variants']) > 1 else gid, gid, 'ADJUVANT', SERIES.get(p['brandPage'], p['series']), cat,
                      title, kana, vol, v['price'], tf(not ended), 'FALSE', '', label, '', tf(quasi), tf(ended),
                      catch, desc, how.strip(), p['ingredients'], p['officialUrl'], p['imageUrl']])
 

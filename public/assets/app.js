@@ -65,6 +65,8 @@
   let filter = "すべて", brandFilter = "すべて", query = "", detailQty = 1, mpTab = "orders", lastOrder = null;
   let fulfillment = load("ito-fulfillment", "ship"); // "ship"（郵送） | "pickup"（サロンで受け取り）
   const PICKUP = !!SHOP.pickup?.enabled;
+  // Stripe の設定が済むまでは shop.json の onlinePayment を false にしておく（確認用プレビューでは常に試せる）
+  const PAY_READY = DEMO || SHOP.onlinePayment !== false;
   if (!PICKUP) fulfillment = "ship";
   const FUL_LABEL = { ship: "郵送", pickup: "サロンで受け取り" };
 
@@ -135,15 +137,44 @@
       </div></a>`;
   }
 
+  // 検索：全角半角・大文字小文字・ひらがな/カタカナ・空白や記号の違いを吸収して比べる
+  const norm = t => String(t || "").normalize("NFKC").toLowerCase()
+    .replace(/[ぁ-ゖ]/g, c => String.fromCharCode(c.charCodeAt(0) + 0x60))
+    .replace(/[\s・:：>＞\-–—_/／,、。()（）［］\[\]「」*＊]/g, "");
+  // シリーズ名の読み（英字表記のシリーズをカタカナでも探せるように）
+  const ALIAS = { "KASUI": "カスイ", "rafuna": "ラフナ", "TOUQU to tone": "トウク トゥトーン", "nicowa": "ニコワ", "muts": "ミューツ",
+    "PRINSHELL": "プリンシェル", "INCHLOSS": "インチロス", "CLEAR GEL": "クリアジェル", "BASIC": "ベーシック", "Balinese Oil": "バリニーズオイル",
+    "HAIR DECO": "ヘアデコ", "DIAMOND J": "ダイヤモンドジェイ", "MELECT": "ミレクト", "All Enrich": "オールエンリッチ", "AE Rich": "エーイーリッチ",
+    "Re:>>> & Class S": "リ クラスエス", "BODY CARE": "ボディケア", "Q&N for Homme": "クオリティ＆ナチュラル", "nyu": "ニュウ", "フィトバイタルライン": "フィトバイタル" };
+  const groupText = g => {
+    const p = g.main;
+    return {
+      strong: norm(g.items.map(x => [x.name, x.nameKana].join(" ")).join(" ") + " " + (ALIAS[p.line] || "")),
+      mid: norm([p.category, p.line, p.brand, { ADJUVANT: "アジュバン", BIOLAB: "バイオラブ" }[p.brand], (p.concerns || []).join(" "), p.catch, g.items.map(x => x.volume).join(" ")].join(" ")),
+      weak: norm([p.description, p.howTo].join(" ")),
+    };
+  };
+  const TEXT = new Map(GROUPED.map(g => [g, groupText(g)]));
+  function score(g, q) {
+    const words = q.split(/\s+/).map(norm).filter(Boolean);
+    if (!words.length) return 1;
+    const t = TEXT.get(g); let sc = 0;
+    for (const w of words) {
+      const s1 = t.strong.includes(w) ? 10 : t.mid.includes(w) ? 4 : t.weak.includes(w) ? 1 : 0;
+      if (!s1) return 0;           // すべての語を含むものだけ
+      sc += s1;
+    }
+    return sc;
+  }
   function filtered() {
-    const q = query.trim().toLowerCase();
-    return GROUPED.filter(g => (filter === "すべて" || g.cat === filter) && (brandFilter === "すべて" || g.main.brand === brandFilter)
-      && (!q || g.items.some(p => [p.name, p.nameKana, p.category, p.line, p.brand, p.catch, (p.concerns || []).join(" ")].join(" ").toLowerCase().includes(q))));
+    const list = GROUPED.filter(g => (filter === "すべて" || g.cat === filter) && (brandFilter === "すべて" || g.main.brand === brandFilter));
+    if (!query.trim()) return list;
+    return list.map(g => [g, score(g, query)]).filter(([, s]) => s > 0).sort((a, b) => b[1] - a[1]).map(([g]) => g);
   }
 
   function renderGrid() {
     const list = filtered();
-    document.getElementById("count").textContent = `${list.length} items`;
+    document.getElementById("count").textContent = query.trim() ? `「${query.trim()}」${list.length}件` : `${list.length} items`;
     document.getElementById("grid").innerHTML = list.map(card).join("") || `<p class="empty" style="grid-column:1/-1">該当する商品がありません。<br>条件を変えてお試しください。</p>`;
     app.querySelectorAll("[data-f]").forEach(b => b.setAttribute("aria-pressed", b.dataset.f === filter));
     app.querySelectorAll("[data-b]").forEach(b => b.setAttribute("aria-pressed", b.dataset.b === brandFilter));
@@ -159,7 +190,8 @@
         <div class="hero-lead">
           <h1 class="hero-mark">salon ito<span>Online Store</span></h1>
           <p class="hero-text">サロンで実際に使っているスキンケアとヘアケアを、ご自宅でも。<br>施術のあとも続く心地よさを、一本の糸のようにつないでいきます。</p>
-          <a class="textlink" href="#items">商品を見る</a>
+          <button type="button" class="hero-search" data-open-search><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6"/><path d="M13 13l5 5"/></svg>商品名・お悩みで探す</button>
+          <a class="textlink" href="#items">すべての商品を見る</a>
         </div>
         <p class="tate">サロンの手ざわりを、<br>毎日の<em>暮らし</em>へ。</p>
       </div>
@@ -198,7 +230,8 @@
       if (b.dataset.jump) document.getElementById("items").scrollIntoView({ behavior: "smooth" });
     }));
     const q = document.getElementById("q");
-    q.oninput = () => { query = q.value; renderGrid(); };
+    q.oninput = () => { query = q.value; const g = document.getElementById("gq"); if (g) g.value = query; renderGrid(); };
+    app.querySelectorAll("[data-open-search]").forEach(b => (b.onclick = () => openSearch(true)));
     drawThread();
     if (scrollToItems) document.getElementById("items").scrollIntoView();
   }
@@ -331,13 +364,13 @@
             <dt>返品・キャンセル</dt><dd>お客様都合による返品はお受けしていません。不良品・誤配送の場合は到着後7日以内にご連絡ください。詳しくは<a href="#tokushoho">特定商取引法に基づく表記</a>をご覧ください。</dd>
           </dl>
           <label class="agree"><input type="checkbox" id="agree"><span><a href="#guide">ご利用ガイド</a>・<a href="#tokushoho">特定商取引法に基づく表記</a>・<a href="#privacy">プライバシーポリシー</a>に同意します</span></label>
-          <button class="btn red block" id="go" disabled>お支払いへ進む（<span id="go-total">${yen(t.total)}</span>）</button>
+          ${PAY_READY ? `<button class="btn red block" id="go" disabled>お支払いへ進む（<span id="go-total">${yen(t.total)}</span>）</button>` : `<p class="note-box">${esc(SHOP.paymentPendingNote || "オンラインでのお支払いは準備中です。")}</p><button class="btn block" id="go" disabled hidden><span id="go-total"></span></button>`}
           <p class="err" id="err" hidden></p>
           <p class="small-note">次の画面で、お届け先とお支払い方法を入力します。決済は Stripe の安全な画面で行われ、カード情報は当店に保存されません。</p>
         </div>
       </div></div>`;
     const agree = document.getElementById("agree"), go = document.getElementById("go"), err = document.getElementById("err");
-    agree.onchange = () => (go.disabled = !agree.checked);
+    agree.onchange = () => (go.disabled = !agree.checked || !PAY_READY);
     app.querySelectorAll("[name=ful]").forEach(r => (r.onchange = () => {
       fulfillment = r.value; save("ito-fulfillment", fulfillment);
       document.getElementById("sumbox").innerHTML = sumBlock(cart);
@@ -557,6 +590,33 @@
     </div>`;
     document.getElementById("reset").onclick = () => { demoOrders = []; history = []; save("ito-demo-orders", []); save("ito-orders", []); viewSheet(); };
   }
+
+  /* ---------- header search (どの画面からでも使える) ---------- */
+  const panel = document.getElementById("searchPanel"), toggle = document.getElementById("searchToggle"), gq = document.getElementById("gq"), sug = document.getElementById("gsSuggest");
+  function openSearch(open) {
+    panel.hidden = !open; toggle.setAttribute("aria-expanded", open);
+    if (open) { gq.value = query; showSuggest(); setTimeout(() => gq.focus(), 30); }
+  }
+  function showSuggest() {
+    const q = gq.value.trim();
+    if (!q) { sug.innerHTML = `<p class="gs-hint">例：クレンジング、シャンプー、乾燥、KASUI、デマキャン</p>`; return; }
+    const hits = GROUPED.map(g => [g, score(g, q)]).filter(([, s]) => s > 0).sort((a, b) => b[1] - a[1]).map(([g]) => g);
+    sug.innerHTML = hits.length
+      ? hits.slice(0, 6).map(g => `<a class="gs-item" href="#item-${g.id}"><span class="gs-img">${art(g.main)}</span><span class="gs-t"><b>${esc(g.main.name)}</b><small>${esc(g.main.brand)}${g.main.nameKana ? "｜" + esc(g.main.nameKana) : ""}</small></span><span class="gs-p">${g.soldout ? "SOLD OUT" : yen(g.min) + (g.items.length > 1 ? "〜" : "")}</span></a>`).join("")
+        + `<button type="button" class="gs-all" id="gsAll">「${esc(q)}」の検索結果をすべて見る（${hits.length}件）</button>`
+      : `<p class="gs-hint">「${esc(q)}」に一致する商品はありません。別のことばでお試しください。</p>`;
+    const all = document.getElementById("gsAll");
+    if (all) all.onclick = showAll;
+  }
+  function showAll() {
+    query = gq.value; filter = "すべて"; brandFilter = "すべて"; openSearch(false);
+    if (location.hash === "#items" && document.getElementById("grid")) { const q = document.getElementById("q"); if (q) q.value = query; renderGrid(); document.getElementById("items").scrollIntoView(); }
+    else location.hash = "items";
+  }
+  toggle.onclick = () => openSearch(panel.hidden);
+  gq.oninput = showSuggest;
+  gq.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); showAll(); } if (e.key === "Escape") openSearch(false); };
+  sug.addEventListener("click", e => { if (e.target.closest(".gs-item")) openSearch(false); });
 
   /* ---------- router ---------- */
   function route() {

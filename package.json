@@ -6,7 +6,9 @@
     "build": "node scripts/fetch-sheet.mjs && node scripts/csv-to-json.mjs",
     "products": "node scripts/csv-to-json.mjs",
     "preview": "node scripts/csv-to-json.mjs && node scripts/build-preview.mjs",
-    "dev": "netlify dev"
+    "dev": "netlify dev",
+    "sync": "python3 -I scripts/import/sync_catalog.py",
+    "sync:check": "python3 -I scripts/import/sync_catalog.py --dry-run"
   },
   "dependencies": {
     "stripe": "^23.1.0"
